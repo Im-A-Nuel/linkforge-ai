@@ -487,6 +487,26 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
+
+            {/* CTA Button - Right below the card */}
+            <div className="mt-8 flex justify-center">
+              {address ? (
+                <Link
+                  href="/dashboard"
+                  className="group flex items-center gap-3 rounded-full bg-gradient-to-r from-[#2b68ff] to-[#1f57de] px-10 py-4 text-lg font-bold text-white shadow-xl transition hover:scale-[1.05] hover:shadow-2xl"
+                >
+                  <span>{t.join.cta}</span>
+                  <svg className="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              ) : (
+                <ConnectWallet
+                  label={connectLabel}
+                  className="rounded-full bg-gradient-to-r from-[#2b68ff] to-[#1f57de] px-10 py-4 text-lg font-bold text-white shadow-xl transition hover:scale-[1.05] hover:shadow-2xl"
+                />
+              )}
+            </div>
           </section>
         </main>
 
