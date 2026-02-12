@@ -226,5 +226,3 @@ MIT License
 - The Ethereum and Web3 community
 
 ---
-
-**Built for Chainlink Convergence Hackathon 2026**
