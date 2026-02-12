@@ -288,6 +288,7 @@ function getRecommendation(sentiment: number | undefined, riskLevel: RiskData['r
 
 export default function LandingPage() {
   const [language, setLanguage] = useState<Language>('en');
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const t = translations[language];
   const connectLabel =
     language === 'zh'
@@ -357,15 +358,60 @@ export default function LandingPage() {
             </nav>
 
             <div className="flex items-center gap-3">
-              <Link href="/profile" className="rounded-full bg-[#e4e4e4] px-6 py-3 text-base font-semibold text-[#202020] transition-colors hover:bg-[#d7d7d7]">
-                {t.auth.login}
-              </Link>
+              {/* Language Selector */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-lg transition-all hover:border-blue-500 hover:shadow-md"
+                >
+                  {language === 'en' && '🇬🇧'}
+                  {language === 'zh' && '🇨🇳'}
+                  {language === 'de' && '🇩🇪'}
+                  {language === 'id' && '🇮🇩'}
+                </button>
+
+                {showLanguageMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowLanguageMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                      {languageOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setLanguage(option.value as Language);
+                            setShowLanguageMenu(false);
+                          }}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
+                            language === option.value
+                              ? 'bg-blue-50 text-blue-600'
+                              : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="text-xl">
+                            {option.value === 'en' && '🇬🇧'}
+                            {option.value === 'zh' && '🇨🇳'}
+                            {option.value === 'de' && '🇩🇪'}
+                            {option.value === 'id' && '🇮🇩'}
+                          </span>
+                          <span className="font-medium">{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
               <ConnectWallet label={connectLabel} />
             </div>
           </div>
         </header>
 
-        <main id="hero" className="relative z-10 mx-auto grid w-full max-w-[1220px] gap-16 px-6 pb-28 pt-8 lg:grid-cols-[1fr_1fr] lg:items-center">
+        <main id="hero" className="relative z-10 mx-auto grid w-full max-w-[1220px] gap-16 px-6 pb-28 pt-8 lg:grid-cols-[1fr_1fr] lg:items-start">
           <section className="animate-rise-up">
             <h1 className="max-w-[650px] text-[clamp(2.7rem,6vw,5.8rem)] font-black leading-[0.98] tracking-[-0.03em]">
               <span className="block">{t.hero.line1}</span>
@@ -383,11 +429,14 @@ export default function LandingPage() {
 
             <p className="mt-8 max-w-[640px] text-lg font-medium leading-relaxed text-[#565656] md:text-2xl">{t.hero.desc}</p>
 
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Link href="#join" className="inline-flex items-center gap-2 rounded-full bg-[#2b68ff] px-7 py-3.5 text-xl font-semibold text-white shadow-[0_12px_22px_rgba(43,104,255,0.28)] transition hover:-translate-y-0.5">
-                {t.hero.primaryCta}
-              </Link>
-              <Link href="#demo" className="rounded-full bg-[#e5e5e5] px-7 py-3.5 text-xl font-semibold text-[#222] transition-colors hover:bg-[#dadada]">
+            <div className="mt-10">
+              <p className="text-lg font-semibold text-[#2b68ff] md:text-xl">
+                {language === 'en' && '→ Ready to automate your portfolio with AI-powered insights?'}
+                {language === 'zh' && '→ 准备好用 AI 驱动的洞察自动化您的投资组合了吗？'}
+                {language === 'de' && '→ Bereit, Ihr Portfolio mit KI-gestützten Insights zu automatisieren?'}
+                {language === 'id' && '→ Siap otomasi portfolio Anda dengan insight berbasis AI?'}
+              </p>
+              <Link href="#demo" className="mt-4 inline-block rounded-full bg-[#e5e5e5] px-7 py-3.5 text-xl font-semibold text-[#222] transition-colors hover:bg-[#dadada]">
                 {t.hero.secondaryCta}
               </Link>
             </div>
@@ -399,26 +448,6 @@ export default function LandingPage() {
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#ececec] bg-[#111827] text-xs font-bold text-white">TX</span>
               </div>
               <p className="text-lg leading-tight text-[#2f2f2f] md:text-2xl">{t.hero.trusted}</p>
-            </div>
-
-            <div className="mt-7 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-white/80 bg-white/80 p-1.5 shadow-[0_10px_25px_rgba(0,0,0,0.07)] backdrop-blur">
-              <span className="px-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#5b6477]">
-                {t.languageLabel}
-              </span>
-              {languageOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setLanguage(option.value as Language)}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                    language === option.value
-                      ? 'bg-[#2b68ff] text-white shadow-[0_8px_18px_rgba(43,104,255,0.35)]'
-                      : 'bg-transparent text-[#2f3b52] hover:bg-[#edf2ff]'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
             </div>
           </section>
 
@@ -468,39 +497,86 @@ export default function LandingPage() {
         </section>
 
         <div className="pointer-events-none relative z-10 overflow-hidden">
-          <svg viewBox="0 0 1600 320" className="h-auto w-full">
-            <path d="M0,230 C200,80 410,110 640,200 C860,285 1030,260 1140,170 C1260,70 1430,110 1600,170 L1600,320 L0,320 Z" fill="#2b68ff" />
-            <defs>
-              <path id="ribbonTextPath" d="M-40,220 C200,70 420,95 650,185 C875,275 1040,250 1160,162 C1290,68 1450,108 1640,168" />
-            </defs>
-            <text fill="white" fontSize="54" fontWeight="700" className="tracking-[1px] uppercase">
-              <textPath href="#ribbonTextPath" startOffset="0%">
-                {t.ribbon}{t.ribbon}{t.ribbon}
-              </textPath>
+          <svg viewBox="0 0 1440 200" className="h-auto w-full" preserveAspectRatio="none">
+            {/* Clean wave shape */}
+            <path
+              d="M0,100 C240,50 480,150 720,100 C960,50 1200,150 1440,100 L1440,200 L0,200 Z"
+              fill="#2b68ff"
+            />
+
+            {/* Subtle decorative elements */}
+            <g opacity="0.15">
+              <circle cx="200" cy="120" r="80" fill="white" />
+              <circle cx="700" cy="80" r="60" fill="white" />
+              <circle cx="1200" cy="110" r="70" fill="white" />
+            </g>
+
+            {/* Text on wave - cleaner approach */}
+            <text
+              x="50%"
+              y="140"
+              textAnchor="middle"
+              fill="white"
+              fontSize="24"
+              fontWeight="700"
+              letterSpacing="4"
+              className="uppercase"
+            >
+              {t.ribbon.split('*')[0].trim()} • {t.ribbon.split('*')[1]?.trim()} • {t.ribbon.split('*')[2]?.trim()}
             </text>
           </svg>
         </div>
       </section>
 
-      <section id="how-it-works" className="mx-auto w-full max-w-[1220px] px-6 py-20">
-        <div className="mb-10 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#2b68ff]">{t.how.eyebrow}</p>
-            <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">{t.how.title}</h2>
-          </div>
-          <Link href="/dashboard" className="hidden rounded-full border border-[#b9c9ff] bg-white px-5 py-2.5 text-sm font-semibold text-[#1f57de] md:inline-flex">
-            {t.how.cta}
-          </Link>
+      <section id="how-it-works" className="relative overflow-hidden bg-white py-20">
+        {/* Dot Pattern - Right Side Only */}
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2">
+          <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+            <defs>
+              {/* Dot pattern */}
+              <pattern id="dotPatternBlue" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="#4A90E2" />
+              </pattern>
+
+              {/* Organic shape masks */}
+              <mask id="organicShape1">
+                <ellipse cx="400" cy="100" rx="180" ry="240" fill="white" transform="rotate(-20 400 100)" />
+              </mask>
+              <mask id="organicShape2">
+                <ellipse cx="500" cy="320" rx="220" ry="280" fill="white" transform="rotate(15 500 320)" />
+              </mask>
+              <mask id="organicShape3">
+                <ellipse cx="350" cy="480" rx="160" ry="200" fill="white" transform="rotate(-30 350 480)" />
+              </mask>
+            </defs>
+
+            {/* Apply dot pattern with organic masks */}
+            <rect width="100%" height="100%" fill="url(#dotPatternBlue)" mask="url(#organicShape1)" opacity="0.3" />
+            <rect width="100%" height="100%" fill="url(#dotPatternBlue)" mask="url(#organicShape2)" opacity="0.25" />
+            <rect width="100%" height="100%" fill="url(#dotPatternBlue)" mask="url(#organicShape3)" opacity="0.2" />
+          </svg>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-3">
-          {t.how.steps.map((step, index) => (
-            <article key={step.title} className="rounded-3xl border border-[#dfdfdf] bg-white p-7 shadow-[0_10px_24px_rgba(0,0,0,0.06)]">
-              <p className="text-sm font-bold tracking-[0.08em] text-[#2b68ff]">STEP {String(index + 1).padStart(2, '0')}</p>
-              <h3 className="mt-3 text-2xl font-extrabold leading-tight">{step.title}</h3>
-              <p className="mt-4 text-base leading-relaxed text-[#4b5563]">{step.desc}</p>
-            </article>
-          ))}
+        <div className="relative z-10 mx-auto w-full max-w-[1220px] px-6">
+          <div className="mb-10 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#2b68ff]">{t.how.eyebrow}</p>
+              <h2 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">{t.how.title}</h2>
+            </div>
+            <Link href="/dashboard" className="hidden rounded-full border border-[#b9c9ff] bg-white px-5 py-2.5 text-sm font-semibold text-[#1f57de] md:inline-flex">
+              {t.how.cta}
+            </Link>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-3">
+            {t.how.steps.map((step, index) => (
+              <article key={step.title} className="rounded-3xl border border-[#dfdfdf] bg-white p-7 shadow-[0_10px_24px_rgba(0,0,0,0.06)] transition-transform hover:-translate-y-1">
+                <p className="text-sm font-bold tracking-[0.08em] text-[#2b68ff]">STEP {String(index + 1).padStart(2, '0')}</p>
+                <h3 className="mt-3 text-2xl font-extrabold leading-tight">{step.title}</h3>
+                <p className="mt-4 text-base leading-relaxed text-[#4b5563]">{step.desc}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
       <section id="demo" className="bg-[#e7ebfb] py-20">
@@ -574,19 +650,38 @@ export default function LandingPage() {
       </section>
 
       <section id="join" className="mx-auto w-full max-w-[1220px] px-6 py-24">
-        <div className="rounded-[38px] bg-[#111827] p-8 text-white shadow-[0_20px_38px_rgba(0,0,0,0.24)] md:p-12">
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#93c5fd]">{t.join.eyebrow}</p>
-          <h2 className="mt-3 max-w-[760px] text-4xl font-black tracking-tight md:text-5xl">{t.join.title}</h2>
-          <p className="mt-6 max-w-[760px] text-lg leading-relaxed text-[#d1d5db]">{t.join.desc}</p>
+        <div className="relative overflow-hidden rounded-[38px] bg-[#0a0a0a] p-8 text-white shadow-[0_20px_38px_rgba(0,0,0,0.24)] md:p-12">
+          {/* Animated Pixel Background */}
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="grid h-full w-full grid-cols-12 gap-0">
+              {Array.from({ length: 96 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="animate-pixel-shift aspect-square"
+                  style={{
+                    animationDelay: `${(i % 12) * 0.15 + Math.floor(i / 12) * 0.1}s`,
+                    animationDuration: `${3 + (i % 3)}s`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <ConnectWallet />
-            <Link href="/dashboard" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#111827]">{t.join.cta}</Link>
+          {/* Content */}
+          <div className="relative z-10">
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#93c5fd]">{t.join.eyebrow}</p>
+            <h2 className="mt-3 max-w-[760px] text-4xl font-black tracking-tight md:text-5xl">{t.join.title}</h2>
+            <p className="mt-6 max-w-[760px] text-lg leading-relaxed text-[#d1d5db]">{t.join.desc}</p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <ConnectWallet />
+              <Link href="/dashboard" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#111827]">{t.join.cta}</Link>
+            </div>
           </div>
         </div>
       </section>
 
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes rise-up {
           from {
             opacity: 0;
@@ -628,6 +723,29 @@ export default function LandingPage() {
 
         .animate-float-chat {
           animation: float-chat 5s ease-in-out infinite;
+        }
+
+        @keyframes pixel-shift {
+          0%, 100% {
+            background-color: #0a0a0a;
+          }
+          20% {
+            background-color: #1a1a1a;
+          }
+          40% {
+            background-color: #2a2a2a;
+          }
+          60% {
+            background-color: #3a3a3a;
+          }
+          80% {
+            background-color: #2a2a2a;
+          }
+        }
+
+        .animate-pixel-shift {
+          animation: pixel-shift infinite ease-in-out;
+          will-change: background-color;
         }
       `}</style>
     </div>
