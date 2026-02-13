@@ -1,14 +1,30 @@
 'use client';
 
 import { useAccount } from 'wagmi';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useUserProfile, useSetProfile, stringToRiskLevel, riskLevelToString } from '@/hooks/useContract';
 
 export default function Profile() {
   const { address, isConnected } = useAccount();
   const [riskLevel, setRiskLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [esgPriority, setEsgPriority] = useState(true);
   const [automationEnabled, setAutomationEnabled] = useState(false);
+
+  // Read profile from contract
+  const { data: profile, refetch } = useUserProfile(address);
+
+  // Write profile to contract
+  const { setProfile, isPending, isConfirming, isSuccess, hash, error } = useSetProfile();
+
+  // Load profile data from contract when available
+  useEffect(() => {
+    if (profile) {
+      setRiskLevel(riskLevelToString(Number(profile[0])).toLowerCase() as 'low' | 'medium' | 'high');
+      setEsgPriority(profile[1]);
+      setAutomationEnabled(profile[2]);
+    }
+  }, [profile]);
 
   if (!isConnected) {
     return (
@@ -32,10 +48,20 @@ export default function Profile() {
   }
 
   const handleSaveProfile = async () => {
-    // TODO: Call smart contract setProfile function
-    console.log('Saving profile:', { riskLevel, esgPriority, automationEnabled });
-    alert('Profile saved! (Smart contract integration pending)');
+    try {
+      const riskLevelEnum = stringToRiskLevel(riskLevel);
+      setProfile(riskLevelEnum, esgPriority, automationEnabled);
+    } catch (err) {
+      console.error('Error saving profile:', err);
+    }
   };
+
+  // Refetch profile after successful transaction
+  useEffect(() => {
+    if (isSuccess) {
+      refetch();
+    }
+  }, [isSuccess, refetch]);
 
   return (
     <div className="space-y-8">
@@ -199,12 +225,50 @@ export default function Profile() {
         </div>
 
         {/* Save Button */}
-        <button
-          onClick={handleSaveProfile}
-          className="w-full rounded-full bg-gradient-to-r from-[#2b68ff] to-[#1f57de] px-8 py-4 text-lg font-bold text-white shadow-xl transition hover:shadow-2xl hover:scale-[1.02]"
-        >
-          Save Profile Settings
-        </button>
+        <div className="space-y-4">
+          <button
+            onClick={handleSaveProfile}
+            disabled={isPending || isConfirming}
+            className="w-full rounded-full bg-gradient-to-r from-[#2b68ff] to-[#1f57de] px-8 py-4 text-lg font-bold text-white shadow-xl transition hover:shadow-2xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {isPending && 'Waiting for approval...'}
+            {isConfirming && 'Confirming transaction...'}
+            {!isPending && !isConfirming && 'Save Profile Settings'}
+          </button>
+
+          {/* Transaction Status */}
+          {hash && (
+            <div className="rounded-2xl bg-blue-50 p-4">
+              <p className="text-sm text-blue-700">
+                <span className="font-semibold">Transaction submitted:</span>{' '}
+                <a
+                  href={`https://sepolia.basescan.org/tx/${hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-900"
+                >
+                  View on BaseScan ↗
+                </a>
+              </p>
+            </div>
+          )}
+
+          {isSuccess && (
+            <div className="rounded-2xl bg-green-50 p-4">
+              <p className="text-sm font-semibold text-green-700">
+                ✅ Profile saved successfully to blockchain!
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-2xl bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-700">
+                ❌ Error: {error.message}
+              </p>
+            </div>
+          )}
+        </div>
     </div>
   );
 }

@@ -2,9 +2,16 @@
 
 import { useAccount } from 'wagmi';
 import Link from 'next/link';
+import { useUserProfile, useAssetPrice, useLatestReasoning, formatPrice, riskLevelToString } from '@/hooks/useContract';
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
+
+  // Read data from smart contract
+  const { data: profile } = useUserProfile(address);
+  const { data: ethPrice } = useAssetPrice('ETH');
+  const { data: btcPrice } = useAssetPrice('BTC');
+  const { data: latestReasoning } = useLatestReasoning(address);
 
   if (!isConnected) {
     return (
@@ -78,8 +85,12 @@ export default function Dashboard() {
             <div className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">
               Risk Level
             </div>
-            <div className="text-3xl font-black text-amber-600">Medium</div>
-            <p className="mt-2 text-sm text-gray-600">Balanced allocation strategy</p>
+            <div className="text-3xl font-black text-amber-600">
+              {profile ? riskLevelToString(Number(profile[0])) : 'Medium'}
+            </div>
+            <p className="mt-2 text-sm text-gray-600">
+              {profile ? (profile[2] ? 'Automation enabled' : 'Manual control') : 'Balanced allocation strategy'}
+            </p>
           </div>
 
           {/* ESG Score */}
@@ -92,8 +103,12 @@ export default function Dashboard() {
             <div className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">
               ESG Priority
             </div>
-            <div className="text-3xl font-black text-green-600">Enabled</div>
-            <p className="mt-2 text-sm text-gray-600">Sustainable investments active</p>
+            <div className="text-3xl font-black text-green-600">
+              {profile ? (profile[1] ? 'Enabled' : 'Disabled') : 'Enabled'}
+            </div>
+            <p className="mt-2 text-sm text-gray-600">
+              {profile ? (profile[1] ? 'Sustainable investments active' : 'Standard allocation') : 'Loading...'}
+            </p>
           </div>
         </div>
 
