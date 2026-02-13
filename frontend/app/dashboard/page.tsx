@@ -1,17 +1,28 @@
 'use client';
 
 import { useAccount } from 'wagmi';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useUserProfile, useAssetPrice, useLatestReasoning, formatPrice, riskLevelToString } from '@/hooks/useContract';
+import { riskLevelToString } from '@/hooks/useContract';
+import { useCachedProfile } from '@/hooks/useCachedProfile';
+import AIAnalysisSection from '@/components/AIAnalysisSection';
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
+  const [mounted, setMounted] = useState(false);
 
-  // Read data from smart contract
-  const { data: profile } = useUserProfile(address);
-  const { data: ethPrice } = useAssetPrice('ETH');
-  const { data: btcPrice } = useAssetPrice('BTC');
-  const { data: latestReasoning } = useLatestReasoning(address);
+  // Read data from smart contract with caching
+  const { profile, isLoading, isCached } = useCachedProfile(address);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch - don't render until mounted
+  if (!mounted) {
+    return null;
+  }
 
   if (!isConnected) {
     return (
@@ -51,6 +62,11 @@ export default function Dashboard() {
             <div className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700">
               Connected
             </div>
+            {isCached && (
+              <div className="rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                📦 Cached
+              </div>
+            )}
           </div>
         </div>
 
@@ -86,10 +102,10 @@ export default function Dashboard() {
               Risk Level
             </div>
             <div className="text-3xl font-black text-amber-600">
-              {profile ? riskLevelToString(Number(profile[0])) : 'Medium'}
+              {profile ? riskLevelToString(profile.riskLevel) : 'Medium'}
             </div>
             <p className="mt-2 text-sm text-gray-600">
-              {profile ? (profile[2] ? 'Automation enabled' : 'Manual control') : 'Balanced allocation strategy'}
+              {profile ? (profile.automationEnabled ? 'Automation enabled' : 'Manual control') : 'Balanced allocation strategy'}
             </p>
           </div>
 
@@ -104,10 +120,10 @@ export default function Dashboard() {
               ESG Priority
             </div>
             <div className="text-3xl font-black text-green-600">
-              {profile ? (profile[1] ? 'Enabled' : 'Disabled') : 'Enabled'}
+              {profile ? (profile.esgPriority ? 'Enabled' : 'Disabled') : 'Enabled'}
             </div>
             <p className="mt-2 text-sm text-gray-600">
-              {profile ? (profile[1] ? 'Sustainable investments active' : 'Standard allocation') : 'Loading...'}
+              {profile ? (profile.esgPriority ? 'Sustainable investments active' : 'Standard allocation') : 'Loading...'}
             </p>
           </div>
         </div>
@@ -165,6 +181,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* AI Analysis Section */}
+        <AIAnalysisSection />
 
         {/* Recent Activity */}
         <div className="rounded-3xl border border-white/50 bg-white p-8 shadow-lg">

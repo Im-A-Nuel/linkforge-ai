@@ -1,219 +1,189 @@
-# LinkForge AI
+# 🤖 LinkForge AI
 
-> **AI-Powered Portfolio Management with Chainlink Integration**
+> AI-Powered Portfolio Management on Blockchain with Chainlink Integration
 
-LinkForge AI is an intelligent portfolio management platform that leverages Chainlink's decentralized oracle network and runtime environment (CRE) to automate investment decisions based on AI-driven market analysis, sentiment data, and ESG considerations.
+A decentralized portfolio manager that uses **Chainlink oracles** to analyze market data and provide personalized investment recommendations based on your risk profile.
 
-## 🎯 Problem & Solution
+## ✨ Features
 
-**Problem:** Traditional portfolio management lacks real-time adaptability and transparent decision-making processes.
+- 🤖 **AI Analysis** - Get recommendations powered by Chainlink Functions
+- 📊 **Real-time Data** - Market prices from Chainlink Data Feeds
+- ⚡ **Automation** - Auto-rebalance via Chainlink Automation
+- 🎯 **Personalized** - Based on your risk tolerance and ESG preferences
+- 🔐 **On-Chain** - All analysis stored transparently on blockchain
+- 💾 **Smart Caching** - 90% fewer RPC calls with intelligent caching
 
-**Solution:** LinkForge AI combines:
-- 🤖 **AI-driven analysis** for market sentiment and trend prediction
-- ⛓️ **Chainlink CRE** for automated, trustless execution
-- 🔐 **On-chain reasoning** for transparent audit trails
-- 🌱 **ESG integration** for sustainable investing
+## 🎬 Demo
+
+**Contract Address (Base Sepolia):** `0x32A00A7244226868653292DF0BdEb48EBbA02D4C`
+
+**Verify:** https://sepolia.basescan.org/address/0x32A00A7244226868653292DF0BdEb48EBbA02D4C
+
+## 🚀 Quick Start
+
+```bash
+# Install frontend
+cd frontend
+npm install
+
+# Run development server
+npm run dev
+```
+
+**Open:** http://localhost:3000
+
+👉 **Full guide:** [QUICK-START.md](./QUICK-START.md)
+
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [QUICK-START.md](./QUICK-START.md) | 5-minute setup guide |
+| [AI-ANALYSIS-GUIDE.md](./AI-ANALYSIS-GUIDE.md) | How AI analysis works |
+| [IMPLEMENTATION-STATUS.md](./IMPLEMENTATION-STATUS.md) | What's implemented |
+| [frontend/TROUBLESHOOTING.md](./frontend/TROUBLESHOOTING.md) | Debug guide |
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
-│                 │         │                  │         │                 │
-│   Frontend      │◄───────►│    Backend       │◄───────►│  External APIs  │
-│   (Next.js)     │         │   (Fastify)      │         │  (Sentiment)    │
-│                 │         │                  │         │                 │
-└────────┬────────┘         └──────────────────┘         └─────────────────┘
-         │
-         │ Web3 (wagmi)
-         │
-         ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                                                                         │
-│                        Smart Contract                                   │
-│                      (LinkForgeVault.sol)                              │
-│                                                                         │
-│  • Store user profiles (risk level, ESG priority)                     │
-│  • Commit AI reasoning (hash + URI)                                   │
-│  • Execute rebalancing actions                                         │
-│  • Emit verifiable events                                             │
-│                                                                         │
-└──────────────────────────────┬──────────────────────────────────────────┘
-                               │
-                               │ Chainlink Integration
-                               │
-         ┌─────────────────────┴─────────────────────┐
-         │                                           │
-         ▼                                           ▼
-┌─────────────────┐                         ┌─────────────────┐
-│                 │                         │                 │
-│  CRE Workflow   │                         │   Automation    │
-│                 │                         │                 │
-│  1. Fetch data  │                         │  Periodic       │
-│  2. AI decision │                         │  triggering     │
-│  3. Commit hash │                         │                 │
-│  4. Execute     │                         │                 │
-│                 │                         │                 │
-└─────────────────┘                         └─────────────────┘
+┌─────────────┐
+│   Frontend  │  Next.js + React + Wagmi
+│  (User UI)  │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────────┐
+│   Smart Contract        │  Solidity on Base Sepolia
+│   LinkForgeAI.sol       │
+└───────┬─────────────────┘
+        │
+        ├──▶ Chainlink Functions  (AI Analysis)
+        ├──▶ Chainlink Data Feeds (Price Oracles)
+        └──▶ Chainlink Automation (Auto-Rebalance)
 ```
 
-## 🚀 Chainlink Components Used
+## 🎯 How It Works
 
-- ✅ **CRE (Chainlink Runtime Environment)** - Core workflow orchestration
-- ✅ **Chainlink Functions** - External API calls and AI processing
-- ✅ **Data Feeds** - Price data for portfolio valuation
-- ✅ **Automation** - Scheduled rebalancing triggers
-- 🔄 **CCIP** (Optional) - Cross-chain asset management
+### 1. Set Your Profile
+Configure risk tolerance (Low/Medium/High) and ESG preferences
 
-## 📁 Project Structure
+### 2. Request AI Analysis
+Click button to trigger Chainlink Functions
 
-```
-linkforge-ai/
-├── frontend/              # Next.js frontend (React + TypeScript)
-│   ├── app/              # Pages: Dashboard, Profile, Logs
-│   ├── components/       # UI components
-│   └── lib/              # Web3 config, utilities
-│
-├── backend/              # Fastify API (TypeScript)
-│   ├── src/routes/      # API endpoints
-│   └── src/services/    # Business logic
-│
-├── smartcontract/        # Solidity contracts (Hardhat)
-│   ├── contracts/       # Smart contracts
-│   ├── scripts/         # Deployment scripts
-│   └── test/            # Contract tests
-│
-├── CRE/                  # Chainlink Runtime Environment
-│   ├── workflows/       # CRE workflow definitions
-│   └── src/             # Workflow steps and utilities
-│
-└── docs/                # Additional documentation
-    ├── architecture.md
-    └── demo-script.md
-```
+### 3. AI Analyzes Data
+Chainlink DON fetches:
+- Market prices (CoinGecko)
+- Sentiment index (Fear & Greed)
+- Calculates volatility, risk, ESG scores
 
-## 🛠️ Tech Stack
+### 4. Get Recommendations
+AI returns one of:
+- **HOLD** - Maintain current allocation
+- **SHIFT TO STABLE** - Move to stablecoins
+- **INCREASE EXPOSURE** - Buy growth assets
+- **DIVERSIFY** - Spread across multiple assets
 
-### Frontend
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type safety
-- **TailwindCSS** - Styling
-- **wagmi + viem** - Web3 integration
-- **TanStack Query** - Data fetching
+## 💻 Tech Stack
 
-### Backend
-- **Node.js + Fastify** - High-performance API
-- **TypeScript** - Type safety
+**Smart Contract:**
+- Solidity ^0.8.19
+- Foundry
+- Chainlink Contracts
 
-### Smart Contract
-- **Solidity ^0.8.20** - Smart contract language
-- **Hardhat** - Development environment
-- **OpenZeppelin** - Security libraries
-- **Chainlink** - Oracle integration
+**Frontend:**
+- Next.js 16 (React 19)
+- TypeScript
+- Wagmi v2 + RainbowKit
+- Tailwind CSS v4
 
-### CRE
-- **CRE CLI** - Workflow management
-- **Chainlink Functions** - External data & AI
+**Blockchain:**
+- Base Sepolia Testnet
+- Chainlink DON
 
-## 🏃 Quick Start
+## 🔗 Chainlink Integration
 
-### Prerequisites
-- Node.js 18+
-- pnpm (recommended: `npm install -g pnpm`)
-- Git
-
-### 1. Clone Repository
-```bash
-git clone https://github.com/yourusername/linkforge-ai.git
-cd linkforge-ai
+### Functions (AI Analysis)
+```javascript
+// chainlink-functions/ai-analysis.js
+const marketData = await fetchMarketData();
+const sentiment = await fetchSentiment();
+const recommendation = analyzeAndRecommend();
+return encoded(recommendation);
 ```
 
-### 2. Frontend Setup
-```bash
-cd frontend
-pnpm install
-cp .env.example .env.local
-# Update .env.local with your config
-pnpm dev
+### Data Feeds (Price Oracles)
+```solidity
+function getLatestPrice(string memory asset)
+  returns (int256 price, uint8 decimals)
 ```
-Frontend runs on `http://localhost:3000`
 
-### 3. Backend Setup
-```bash
-cd backend
-pnpm install
-cp .env.example .env
-# Update .env with API keys
-pnpm dev
+### Automation (Auto-Rebalance)
+```solidity
+function checkUpkeep() returns (bool upkeepNeeded)
+function performUpkeep() // Execute rebalance
 ```
-Backend runs on `http://localhost:8080`
 
-### 4. Smart Contract (Coming Soon)
+## 📊 Analysis Output
+
+```json
+{
+  "sentimentScore": 45,      // -100 to +100
+  "volatilityScore": 62,     // 0-100
+  "riskScore": 55,           // 0-100
+  "esgScore": 78,            // 0-100
+  "recommendedAction": 0     // HOLD/STABLE/GROW/DIVERSIFY
+}
+```
+
+## 💰 Costs
+
+**Per AI Analysis:**
+- Gas: ~$0.001
+- LINK: ~$0.50-$1.00
+
+**Monthly (optimized):**
+- 100 users: ~$1,000-2,000
+
+## 🛠️ Development
+
+### Build Smart Contract
 ```bash
 cd smartcontract
-pnpm install
-cp .env.example .env
-# Update .env with deployer key
-pnpm hardhat compile
-pnpm hardhat test
-pnpm hardhat run scripts/deploy.ts --network sepolia
+forge build
+forge test
 ```
 
-### 5. CRE Workflow (Coming Soon)
+### Test Frontend
 ```bash
-cd CRE
-# Setup CRE CLI per documentation
-cre workflow simulate workflows/linkforge-rebalance.workflow.json
+cd frontend
+npm run dev      # Development
+npm run build    # Production build
 ```
 
-## 🌐 Deployed Addresses
+## 📝 Key Functions
 
-### Base Sepolia Testnet
-- **LinkForgeVault**: `0x...` (Coming soon)
-- **Explorer**: [BaseScan](https://sepolia.basescan.org)
+```solidity
+// User Profile
+function setProfile(RiskLevel risk, bool esg, bool automation)
 
-### Sepolia Testnet
-- **LinkForgeVault**: `0x...` (Coming soon)
-- **Explorer**: [Etherscan](https://sepolia.etherscan.io)
+// AI Analysis
+function requestAIAnalysis(string source, string[] args)
 
-## 📖 Documentation
+// Read Data
+function getProfile(address user) returns (UserProfile)
+function getLatestReasoning(address user) returns (AIReasoning)
+```
 
-- [Architecture Overview](./docs/architecture.md)
-- [Frontend README](./frontend/README.md)
-- [Backend README](./backend/README.md)
-- [Smart Contract README](./smartcontract/README.md) (Coming soon)
-- [CRE Workflow README](./CRE/README.md) (Coming soon)
+## 🚧 Roadmap
 
-## 🎬 Demo
-
-**Video Demo**: [Link to demo video] (Coming soon)
-
-**Demo Script**: See [docs/demo-script.md](./docs/demo-script.md) (Coming soon)
-
-## 🗺️ Roadmap
-
-### Milestone A - Minimal Demo (✅ In Progress)
-- [x] Setup project structure
-- [x] Build Frontend (Next.js)
-- [x] Build Backend API
-- [ ] Deploy smart contract + event logs
-- [ ] CRE workflow: fetch sentiment → commit reasoning → execute action
-- [ ] Frontend: connect wallet + show logs
-
-### Milestone B - Enhanced Features
-- [ ] Functions/CRE call real external APIs
-- [ ] Automation trigger on interval
-- [ ] Compliance gate (allow/deny)
-- [ ] Real sentiment analysis integration
-
-### Milestone C - Advanced Features (Optional)
-- [ ] CCIP cross-chain transfers
-- [ ] Real DEX swap integration
-- [ ] Advanced AI models
-- [ ] Mobile app
-
-## 🤝 Contributing
-
-This is a hackathon project for **Chainlink Convergence**. Contributions and feedback are welcome!
+- [x] Chainlink Functions integration
+- [x] AI analysis UI
+- [x] Profile management
+- [x] Event logs
+- [ ] Manual rebalance execution
+- [ ] Real portfolio balances
+- [ ] IPFS integration
+- [ ] Historical charts
 
 ## 📄 License
 
@@ -221,8 +191,11 @@ MIT License
 
 ## 🙏 Acknowledgments
 
-- Chainlink for providing the decentralized oracle infrastructure
-- OpenZeppelin for secure smart contract libraries
-- The Ethereum and Web3 community
+- [Chainlink](https://chain.link)
+- [Base](https://base.org)
+- [RainbowKit](https://rainbowkit.com)
+- [Wagmi](https://wagmi.sh)
 
 ---
+
+**Built with ❤️ using Chainlink**

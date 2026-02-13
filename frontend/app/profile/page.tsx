@@ -3,28 +3,59 @@
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useUserProfile, useSetProfile, stringToRiskLevel, riskLevelToString } from '@/hooks/useContract';
+import { useSetProfile, stringToRiskLevel, riskLevelToString } from '@/hooks/useContract';
+import { useCachedProfile } from '@/hooks/useCachedProfile';
 
 export default function Profile() {
   const { address, isConnected } = useAccount();
+  const [mounted, setMounted] = useState(false);
   const [riskLevel, setRiskLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [esgPriority, setEsgPriority] = useState(true);
   const [automationEnabled, setAutomationEnabled] = useState(false);
 
-  // Read profile from contract
-  const { data: profile, refetch } = useUserProfile(address);
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Read profile from contract with caching
+  const { profile, forceRefresh } = useCachedProfile(address);
 
   // Write profile to contract
   const { setProfile, isPending, isConfirming, isSuccess, hash, error } = useSetProfile();
 
   // Load profile data from contract when available
   useEffect(() => {
+    console.log('🔍 Profile data:', profile);
     if (profile) {
-      setRiskLevel(riskLevelToString(Number(profile[0])).toLowerCase() as 'low' | 'medium' | 'high');
-      setEsgPriority(profile[1]);
-      setAutomationEnabled(profile[2]);
+      console.log('✅ Setting profile state:', {
+        riskLevel: profile.riskLevel,
+        esgPriority: profile.esgPriority,
+        automationEnabled: profile.automationEnabled,
+      });
+      setRiskLevel(riskLevelToString(profile.riskLevel).toLowerCase() as 'low' | 'medium' | 'high');
+      setEsgPriority(profile.esgPriority);
+      setAutomationEnabled(profile.automationEnabled);
+    } else {
+      console.log('❌ No profile data available');
     }
   }, [profile]);
+
+  // Force refresh after successful transaction with delay
+  useEffect(() => {
+    if (isSuccess) {
+      // Wait 3 seconds for blockchain to update, then force refresh
+      const timer = setTimeout(() => {
+        forceRefresh();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, forceRefresh]);
+
+  // Prevent hydration mismatch - don't render until mounted
+  if (!mounted) {
+    return null;
+  }
 
   if (!isConnected) {
     return (
@@ -55,13 +86,6 @@ export default function Profile() {
       console.error('Error saving profile:', err);
     }
   };
-
-  // Refetch profile after successful transaction
-  useEffect(() => {
-    if (isSuccess) {
-      refetch();
-    }
-  }, [isSuccess, refetch]);
 
   return (
     <div className="space-y-8">
