@@ -1,7 +1,7 @@
 import { baseSepolia } from 'viem/chains';
 import LinkForgeABI from './LinkForgeAI.abi.json';
 
-export const CONTRACT_ADDRESS = '0x32A00A7244226868653292DF0BdEb48EBbA02D4C' as const;
+export const CONTRACT_ADDRESS = '0xC095A56a6f915fAD1Cdb14571135dEE86c879E32' as const;
 
 export const LINKFORGE_CONTRACT = {
   address: CONTRACT_ADDRESS,
@@ -41,3 +41,4 @@ export interface AIReasoning {
   ipfsHash: string;
   timestamp: bigint;
 }
+

@@ -278,7 +278,7 @@ export interface ContractEvent {
   timestamp: bigint;
   blockNumber: bigint;
   transactionHash: string;
-  args: any;
+  args: Record<string, unknown> | undefined;
 }
 
 /**
@@ -287,20 +287,47 @@ export interface ContractEvent {
 export function useContractEvents(address?: `0x${string}`) {
   const [events, setEvents] = useState<ContractEvent[]>([]);
 
+  const mapIncomingLogs = (logs: unknown[], type: string): ContractEvent[] => {
+    return logs
+      .map((rawLog): ContractEvent | null => {
+        if (typeof rawLog !== 'object' || rawLog === null) {
+          return null;
+        }
+
+        const log = rawLog as {
+          transactionHash?: string;
+          logIndex?: bigint | number;
+          blockNumber?: bigint | number;
+          args?: Record<string, unknown>;
+        };
+
+        if (!log.transactionHash || log.logIndex === undefined || log.blockNumber === undefined) {
+          return null;
+        }
+
+        const blockNumber =
+          typeof log.blockNumber === 'bigint' ? log.blockNumber : BigInt(log.blockNumber);
+        const logIndex = typeof log.logIndex === 'bigint' ? log.logIndex : BigInt(log.logIndex);
+
+        return {
+          id: `${log.transactionHash}-${logIndex.toString()}`,
+          type,
+          timestamp: BigInt(Date.now()),
+          blockNumber,
+          transactionHash: log.transactionHash,
+          args: log.args,
+        };
+      })
+      .filter((event): event is ContractEvent => event !== null);
+  };
+
   // Watch ProfileUpdated events
   useWatchContractEvent({
     ...LINKFORGE_CONTRACT,
     eventName: 'ProfileUpdated',
     args: address ? { user: address } : undefined,
-    onLogs(logs: any) {
-      const newEvents = logs.map((log: any) => ({
-        id: `${log.transactionHash}-${log.logIndex}`,
-        type: 'ProfileUpdated',
-        timestamp: BigInt(Date.now()),
-        blockNumber: log.blockNumber,
-        transactionHash: log.transactionHash,
-        args: log.args,
-      }));
+    onLogs(logs) {
+      const newEvents = mapIncomingLogs(logs as unknown[], 'ProfileUpdated');
       setEvents((prev) => [...newEvents, ...prev]);
     },
   });
@@ -310,15 +337,8 @@ export function useContractEvents(address?: `0x${string}`) {
     ...LINKFORGE_CONTRACT,
     eventName: 'ReasoningCommitted',
     args: address ? { user: address } : undefined,
-    onLogs(logs: any) {
-      const newEvents = logs.map((log: any) => ({
-        id: `${log.transactionHash}-${log.logIndex}`,
-        type: 'ReasoningCommitted',
-        timestamp: BigInt(Date.now()),
-        blockNumber: log.blockNumber,
-        transactionHash: log.transactionHash,
-        args: log.args,
-      }));
+    onLogs(logs) {
+      const newEvents = mapIncomingLogs(logs as unknown[], 'ReasoningCommitted');
       setEvents((prev) => [...newEvents, ...prev]);
     },
   });
@@ -328,15 +348,8 @@ export function useContractEvents(address?: `0x${string}`) {
     ...LINKFORGE_CONTRACT,
     eventName: 'RebalanceExecuted',
     args: address ? { user: address } : undefined,
-    onLogs(logs: any) {
-      const newEvents = logs.map((log: any) => ({
-        id: `${log.transactionHash}-${log.logIndex}`,
-        type: 'RebalanceExecuted',
-        timestamp: BigInt(Date.now()),
-        blockNumber: log.blockNumber,
-        transactionHash: log.transactionHash,
-        args: log.args,
-      }));
+    onLogs(logs) {
+      const newEvents = mapIncomingLogs(logs as unknown[], 'RebalanceExecuted');
       setEvents((prev) => [...newEvents, ...prev]);
     },
   });
@@ -346,15 +359,8 @@ export function useContractEvents(address?: `0x${string}`) {
     ...LINKFORGE_CONTRACT,
     eventName: 'RebalanceRequested',
     args: address ? { user: address } : undefined,
-    onLogs(logs: any) {
-      const newEvents = logs.map((log: any) => ({
-        id: `${log.transactionHash}-${log.logIndex}`,
-        type: 'RebalanceRequested',
-        timestamp: BigInt(Date.now()),
-        blockNumber: log.blockNumber,
-        transactionHash: log.transactionHash,
-        args: log.args,
-      }));
+    onLogs(logs) {
+      const newEvents = mapIncomingLogs(logs as unknown[], 'RebalanceRequested');
       setEvents((prev) => [...newEvents, ...prev]);
     },
   });

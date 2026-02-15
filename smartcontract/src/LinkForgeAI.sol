@@ -16,11 +16,18 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
 
     // ============ State Variables ============
 
+    address public owner;
+
     // Chainlink Functions
     bytes32 public donId;
     uint64 public subscriptionId;
     uint32 public gasLimit;
     bytes32 public latestRequestId;
+    bytes32 public allowedSourceHash;
+    uint256 public requestCooldown = 30 seconds;
+    uint256 public maxSourceLength = 4096;
+    uint256 public maxArgsLength = 8;
+    uint256 private constant MAX_ACTION_INDEX = 3;
 
     // User Profiles
     struct UserProfile {
@@ -56,7 +63,9 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
 
     // State mappings
     mapping(address => UserProfile) public userProfiles;
+    mapping(address => bool) public hasProfile;
     mapping(bytes32 => address) public requestToUser;
+    mapping(address => uint256) public lastRequestTimestamp;
     mapping(address => AIReasoning) public latestReasoning;
     mapping(address => AIReasoning[]) public reasoningHistory;
 
@@ -98,6 +107,17 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
     );
 
     event PriceFeedAdded(string indexed asset, address feedAddress);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event FunctionsConfigUpdated(bytes32 donId, uint64 subscriptionId, uint32 gasLimit);
+    event RequestLimitsUpdated(uint256 requestCooldown, uint256 maxSourceLength, uint256 maxArgsLength);
+    event AllowedSourceHashUpdated(bytes32 indexed allowedSourceHash);
+    event AutomationIntervalUpdated(uint256 automationInterval);
+    event AnalysisRequestFailed(address indexed user, bytes32 indexed requestId, bytes err);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner");
+        _;
+    }
 
     // ============ Constructor ============
 
@@ -106,9 +126,12 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
         bytes32 _donId,
         uint64 _subscriptionId
     ) FunctionsClient(_functionsRouter) {
+        owner = msg.sender;
         donId = _donId;
         subscriptionId = _subscriptionId;
         gasLimit = 300000;
+
+        emit OwnershipTransferred(address(0), msg.sender);
     }
 
     // ============ Profile Management ============
@@ -128,6 +151,7 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
         profile.riskLevel = _riskLevel;
         profile.esgPriority = _esgPriority;
         profile.automationEnabled = _automationEnabled;
+        hasProfile[msg.sender] = true;
 
         emit ProfileUpdated(msg.sender, _riskLevel, _esgPriority, _automationEnabled);
     }
@@ -151,6 +175,16 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
         string calldata source,
         string[] calldata args
     ) external returns (bytes32 requestId) {
+        require(hasProfile[msg.sender], "Profile not set");
+        require(bytes(source).length > 0, "Empty source");
+        require(bytes(source).length <= maxSourceLength, "Source too large");
+        require(args.length <= maxArgsLength, "Too many args");
+        require(block.timestamp >= lastRequestTimestamp[msg.sender] + requestCooldown, "Request cooldown active");
+
+        if (allowedSourceHash != bytes32(0)) {
+            require(keccak256(bytes(source)) == allowedSourceHash, "Source not allowed");
+        }
+
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(source);
 
@@ -166,6 +200,7 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
         );
 
         requestToUser[requestId] = msg.sender;
+        lastRequestTimestamp[msg.sender] = block.timestamp;
         latestRequestId = requestId;
 
         emit RebalanceRequested(msg.sender, requestId, block.timestamp);
@@ -185,9 +220,13 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
         bytes memory err
     ) internal override {
         address user = requestToUser[requestId];
+        if (user == address(0)) {
+            return;
+        }
 
         if (err.length > 0) {
-            // Handle error
+            emit AnalysisRequestFailed(user, requestId, err);
+            delete requestToUser[requestId];
             return;
         }
 
@@ -197,9 +236,13 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
             uint256 volatilityScore,
             uint256 riskScore,
             uint256 esgScore,
-            uint8 actionIndex,
+            uint256 actionIndex,
             string memory ipfsHash
-        ) = abi.decode(response, (int256, uint256, uint256, uint256, uint8, string));
+        ) = abi.decode(response, (int256, uint256, uint256, uint256, uint256, string));
+
+        if (actionIndex > MAX_ACTION_INDEX) {
+            actionIndex = 0;
+        }
 
         RebalanceAction action = RebalanceAction(actionIndex);
 
@@ -216,6 +259,7 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
 
         latestReasoning[user] = reasoning;
         reasoningHistory[user].push(reasoning);
+        delete requestToUser[requestId];
 
         emit ReasoningCommitted(
             user,
@@ -240,7 +284,9 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
      * @param asset Asset symbol (e.g., "BTC", "ETH")
      * @param feedAddress Chainlink price feed address
      */
-    function addPriceFeed(string calldata asset, address feedAddress) external {
+    function addPriceFeed(string calldata asset, address feedAddress) external onlyOwner {
+        require(bytes(asset).length > 0, "Empty asset");
+        require(feedAddress != address(0), "Invalid feed");
         priceFeeds[asset] = AggregatorV3Interface(feedAddress);
         emit PriceFeedAdded(asset, feedAddress);
     }
@@ -295,6 +341,12 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
      */
     function performUpkeep(bytes calldata performData) external override {
         address user = abi.decode(performData, (address));
+        UserProfile memory profile = userProfiles[user];
+        require(profile.automationEnabled, "Automation disabled");
+        require(
+            block.timestamp - lastAutomationCheck[user] >= automationInterval,
+            "Automation interval not reached"
+        );
 
         lastAutomationCheck[user] = block.timestamp;
 
@@ -355,16 +407,57 @@ contract LinkForgeAI is FunctionsClient, AutomationCompatibleInterface {
         bytes32 _donId,
         uint64 _subscriptionId,
         uint32 _gasLimit
-    ) external {
+    ) external onlyOwner {
+        require(_gasLimit > 0, "Invalid gas limit");
         donId = _donId;
         subscriptionId = _subscriptionId;
         gasLimit = _gasLimit;
+
+        emit FunctionsConfigUpdated(_donId, _subscriptionId, _gasLimit);
+    }
+
+    /**
+     * @notice Set optional source code hash restriction for requests.
+     * @dev Set to bytes32(0) to disable source hash validation.
+     */
+    function setAllowedSourceHash(bytes32 _allowedSourceHash) external onlyOwner {
+        allowedSourceHash = _allowedSourceHash;
+        emit AllowedSourceHashUpdated(_allowedSourceHash);
+    }
+
+    /**
+     * @notice Set anti-abuse request limits.
+     */
+    function updateRequestLimits(
+        uint256 _requestCooldown,
+        uint256 _maxSourceLength,
+        uint256 _maxArgsLength
+    ) external onlyOwner {
+        require(_maxSourceLength > 0, "Invalid source limit");
+        require(_maxArgsLength > 0, "Invalid args limit");
+
+        requestCooldown = _requestCooldown;
+        maxSourceLength = _maxSourceLength;
+        maxArgsLength = _maxArgsLength;
+
+        emit RequestLimitsUpdated(_requestCooldown, _maxSourceLength, _maxArgsLength);
     }
 
     /**
      * @notice Update automation interval
      */
-    function updateAutomationInterval(uint256 _interval) external {
+    function updateAutomationInterval(uint256 _interval) external onlyOwner {
+        require(_interval > 0, "Invalid interval");
         automationInterval = _interval;
+        emit AutomationIntervalUpdated(_interval);
+    }
+
+    /**
+     * @notice Transfer contract ownership.
+     */
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid owner");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
     }
 }

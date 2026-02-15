@@ -21,16 +21,19 @@ const publicClient = createPublicClient({
 export function useEventLogs(address?: `0x${string}`) {
   const [logs, setLogs] = useState<EventLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!address) {
       setIsLoading(false);
+      setErrorMessage(null);
       return;
     }
 
     const fetchLogs = async () => {
       try {
         setIsLoading(true);
+        setErrorMessage(null);
 
         // Get current block
         const currentBlock = await publicClient.getBlockNumber();
@@ -40,10 +43,61 @@ export function useEventLogs(address?: `0x${string}`) {
         const fromBlock = currentBlock > BLOCK_RANGE ? currentBlock - BLOCK_RANGE : BigInt(0);
 
         const allLogs: EventLog[] = [];
+        const blockTimestampCache = new Map<string, number>();
+
+        const resolveBlockTimestamp = async (blockNumber?: bigint | null): Promise<number> => {
+          if (blockNumber == null) {
+            return Date.now();
+          }
+
+          const cacheKey = blockNumber.toString();
+          const cachedTimestamp = blockTimestampCache.get(cacheKey);
+          if (cachedTimestamp !== undefined) {
+            return cachedTimestamp;
+          }
+
+          try {
+            const block = await publicClient.getBlock({ blockNumber });
+            const timestamp = Number(block.timestamp) * 1000;
+            blockTimestampCache.set(cacheKey, timestamp);
+            return timestamp;
+          } catch (timestampError) {
+            console.warn(`Error fetching block timestamp for ${cacheKey}:`, timestampError);
+            return Date.now();
+          }
+        };
 
         // Helper to format logs
         const riskLevels = ['Low', 'Medium', 'High'];
         const actions = ['HOLD', 'SHIFT_TO_STABLE', 'INCREASE_EXPOSURE', 'DIVERSIFY'];
+
+        type ProfileUpdatedArgs = {
+          riskLevel?: number | bigint;
+          esgPriority?: boolean;
+          automationEnabled?: boolean;
+        };
+        type ReasoningCommittedArgs = {
+          sentimentScore?: number | bigint;
+          volatilityScore?: number | bigint;
+          recommendedAction?: number | bigint;
+          timestamp?: number | bigint;
+        };
+        type RebalanceExecutedArgs = {
+          action?: number | bigint;
+          timestamp?: number | bigint;
+        };
+        type RebalanceRequestedArgs = {
+          requestId?: `0x${string}`;
+          timestamp?: number | bigint;
+        };
+        const toNumber = (value: number | bigint | undefined): number => {
+          if (value === undefined) return 0;
+          return typeof value === 'bigint' ? Number(value) : value;
+        };
+        const toTimestampMs = (value: number | bigint | undefined): number => {
+          const timestamp = toNumber(value);
+          return timestamp > 0 ? timestamp * 1000 : Date.now();
+        };
 
         // Fetch ProfileUpdated events
         try {
@@ -56,14 +110,15 @@ export function useEventLogs(address?: `0x${string}`) {
           });
 
           for (const log of profileLogs) {
-            const args = log.args as any;
+            const args = (log.args ?? {}) as ProfileUpdatedArgs;
+            const riskLevel = toNumber(args.riskLevel);
             allLogs.push({
               id: `${log.transactionHash}-${log.logIndex}`,
               type: 'ProfileUpdated',
-              timestamp: Date.now(),
+              timestamp: await resolveBlockTimestamp(log.blockNumber),
               blockNumber: log.blockNumber,
               transactionHash: log.transactionHash,
-              details: `Risk: ${riskLevels[args.riskLevel] || 'Unknown'}, ESG: ${args.esgPriority ? 'Enabled' : 'Disabled'}, Auto: ${args.automationEnabled ? 'Enabled' : 'Disabled'}`,
+              details: `Risk: ${riskLevels[riskLevel] || 'Unknown'}, ESG: ${args.esgPriority ? 'Enabled' : 'Disabled'}, Auto: ${args.automationEnabled ? 'Enabled' : 'Disabled'}`,
               color: 'blue',
             });
           }
@@ -82,14 +137,15 @@ export function useEventLogs(address?: `0x${string}`) {
           });
 
           for (const log of reasoningLogs) {
-            const args = log.args as any;
+            const args = (log.args ?? {}) as ReasoningCommittedArgs;
+            const recommendedAction = toNumber(args.recommendedAction);
             allLogs.push({
               id: `${log.transactionHash}-${log.logIndex}`,
               type: 'ReasoningCommitted',
-              timestamp: Number(args.timestamp) * 1000,
+              timestamp: toTimestampMs(args.timestamp),
               blockNumber: log.blockNumber,
               transactionHash: log.transactionHash,
-              details: `Action: ${actions[args.recommendedAction] || 'Unknown'}, Sentiment: ${args.sentimentScore}, Volatility: ${args.volatilityScore}`,
+              details: `Action: ${actions[recommendedAction] || 'Unknown'}, Sentiment: ${toNumber(args.sentimentScore)}, Volatility: ${toNumber(args.volatilityScore)}`,
               color: 'purple',
             });
           }
@@ -108,14 +164,15 @@ export function useEventLogs(address?: `0x${string}`) {
           });
 
           for (const log of rebalanceLogs) {
-            const args = log.args as any;
+            const args = (log.args ?? {}) as RebalanceExecutedArgs;
+            const action = toNumber(args.action);
             allLogs.push({
               id: `${log.transactionHash}-${log.logIndex}`,
               type: 'RebalanceExecuted',
-              timestamp: Number(args.timestamp) * 1000,
+              timestamp: toTimestampMs(args.timestamp),
               blockNumber: log.blockNumber,
               transactionHash: log.transactionHash,
-              details: `Action: ${actions[args.action] || 'Unknown'}`,
+              details: `Action: ${actions[action] || 'Unknown'}`,
               color: 'green',
             });
           }
@@ -134,14 +191,15 @@ export function useEventLogs(address?: `0x${string}`) {
           });
 
           for (const log of requestedLogs) {
-            const args = log.args as any;
+            const args = (log.args ?? {}) as RebalanceRequestedArgs;
+            const requestIdPreview = args.requestId ? `${args.requestId.slice(0, 10)}...` : 'N/A';
             allLogs.push({
               id: `${log.transactionHash}-${log.logIndex}`,
               type: 'RebalanceRequested',
-              timestamp: Number(args.timestamp) * 1000,
+              timestamp: toTimestampMs(args.timestamp),
               blockNumber: log.blockNumber,
               transactionHash: log.transactionHash,
-              details: `Request ID: ${args.requestId.slice(0, 10)}...`,
+              details: `Request ID: ${requestIdPreview}`,
               color: 'amber',
             });
           }
@@ -155,6 +213,7 @@ export function useEventLogs(address?: `0x${string}`) {
         setLogs(allLogs);
       } catch (error) {
         console.error('Error fetching logs:', error);
+        setErrorMessage('Failed to fetch on-chain logs. Please refresh in a few moments.');
       } finally {
         setIsLoading(false);
       }
@@ -163,5 +222,5 @@ export function useEventLogs(address?: `0x${string}`) {
     fetchLogs();
   }, [address]);
 
-  return { logs, isLoading };
+  return { logs, isLoading, errorMessage };
 }

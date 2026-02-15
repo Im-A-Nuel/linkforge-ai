@@ -26,6 +26,7 @@ out/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -48,3 +49,6 @@ typechain-types/
 # Misc
 *.tsbuildinfo
 .turbo
+
+# Foundry local dependency cache (do not commit vendored tree by default)
+smartcontract/lib/chainlink-brownie-contracts/
