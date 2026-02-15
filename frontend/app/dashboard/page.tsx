@@ -2,46 +2,164 @@
 
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { riskLevelToString } from '@/hooks/useContract';
 import { useCachedProfile } from '@/hooks/useCachedProfile';
+import { useEventLogs, type EventLog } from '@/hooks/useEventLogs';
 import AIAnalysisSection from '@/components/AIAnalysisSection';
+import { HydrationLoader, WalletRequiredState } from '@/components/ui/wallet-states';
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
+  const [nowTimestamp, setNowTimestamp] = useState(0);
 
   // Read data from smart contract with caching
   const { profile, isLoading, isCached } = useCachedProfile(address);
+  const { logs: eventLogs, isLoading: isEventLogsLoading, errorMessage: eventLogsError } = useEventLogs(address);
+
+  const recentActivityLogs = eventLogs.slice(0, 3);
+
+  const formatRelativeTime = (timestamp: number) => {
+    if (nowTimestamp === 0) return 'just now';
+
+    const diffSeconds = Math.max(0, Math.floor((nowTimestamp - timestamp) / 1000));
+    if (diffSeconds < 60) return 'just now';
+
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) return `${diffDays}d ago`;
+
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths}mo ago`;
+
+    const diffYears = Math.floor(diffDays / 365);
+    return `${diffYears}y ago`;
+  };
+
+  const getActivityColorClasses = (color: string) => {
+    const colorMap: Record<string, { bg: string; text: string }> = {
+      blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
+      green: { bg: 'bg-emerald-100', text: 'text-emerald-600' },
+      amber: { bg: 'bg-amber-100', text: 'text-amber-600' },
+    };
+    return colorMap[color] || colorMap.blue;
+  };
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'RebalanceExecuted':
+        return (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        );
+      case 'ProfileUpdated':
+        return (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'ReasoningCommitted':
+        return (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        );
+    }
+  };
+
+  const toActivityContent = (log: EventLog) => {
+    const actionTextByCode: Record<string, string> = {
+      HOLD: 'Kept current allocation',
+      SHIFT_TO_STABLE: 'Rebalanced to increase stable assets',
+      INCREASE_EXPOSURE: 'Increased growth allocation gradually',
+      DIVERSIFY: 'Diversified allocation across assets',
+    };
+
+    if (log.type === 'RebalanceExecuted') {
+      const actionMatch = log.details.match(/Action:\s*([A-Z_]+)/);
+      const actionCode = actionMatch?.[1] ?? '';
+
+      return {
+        title: 'AI Recommendation Executed',
+        description: actionTextByCode[actionCode] ?? 'Portfolio rebalance executed on-chain',
+      };
+    }
+
+    if (log.type === 'ProfileUpdated') {
+      const riskMatch = log.details.match(/Risk:\s*([^,]+)/);
+      const risk = riskMatch?.[1] ?? 'Unknown';
+
+      return {
+        title: 'Risk Assessment Complete',
+        description: `Portfolio risk level: ${risk}`,
+      };
+    }
+
+    if (log.type === 'ReasoningCommitted') {
+      return {
+        title: 'Data Synced from Oracle',
+        description: 'Latest market data and AI reasoning committed on-chain',
+      };
+    }
+
+    if (log.type === 'RebalanceRequested') {
+      return {
+        title: 'Rebalance Request Sent',
+        description: 'Automation request submitted and waiting execution',
+      };
+    }
+
+    return {
+      title: log.type,
+      description: log.details,
+    };
+  };
 
   // Prevent hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    setNowTimestamp(Date.now());
+
+    const intervalId = window.setInterval(() => {
+      setNowTimestamp(Date.now());
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   // Prevent hydration mismatch - don't render until mounted
   if (!mounted) {
-    return null;
+    return (
+      <HydrationLoader
+        title="Loading dashboard"
+        subtitle="Preparing live wallet context and AI insights..."
+      />
+    );
   }
 
   if (!isConnected) {
     return (
-      <div className="flex min-h-[65vh] items-center justify-center px-6">
-        <div className="max-w-md w-full rounded-3xl border border-gray-200 bg-white p-8 shadow-xl text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
-            <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-black mb-3">Welcome to LinkForge AI</h2>
-          <p className="text-gray-600 mb-6">
-            Please connect your wallet to access the dashboard and manage your portfolio.
-          </p>
-          <Link href="/" className="inline-block rounded-full bg-[#2b68ff] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1f57de]">
-            Go to Home
-          </Link>
-        </div>
-      </div>
+      <WalletRequiredState
+        title="Dashboard Locked"
+        description="Connect wallet to load your portfolio, AI analysis, and on-chain activity context."
+        hint="Once connected, data will sync automatically."
+      />
     );
   }
 
@@ -64,7 +182,12 @@ export default function Dashboard() {
             </div>
             {isCached && (
               <div className="rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                📦 Cached
+                Cached
+              </div>
+            )}
+            {isLoading && (
+              <div className="rounded-lg bg-[#eef4ff] px-3 py-1.5 text-xs font-semibold text-[#2b68ff]">
+                Syncing profile...
               </div>
             )}
           </div>
@@ -190,44 +313,39 @@ export default function Dashboard() {
           <h2 className="mb-6 text-2xl font-black text-[#121212]">Recent Activity</h2>
 
           <div className="space-y-4">
-            <div className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+            {isEventLogsLoading ? (
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-6 text-center">
+                <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent" />
+                <p className="mt-2 text-sm text-gray-600">Loading recent on-chain activity...</p>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-[#121212]">AI Recommendation Executed</p>
-                <p className="text-sm text-gray-600">Rebalanced to increase stable assets</p>
+            ) : eventLogsError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                {eventLogsError}
               </div>
-              <span className="text-xs text-gray-500">2h ago</span>
-            </div>
+            ) : recentActivityLogs.length === 0 ? (
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-6 text-center">
+                <p className="text-sm font-semibold text-gray-700">No recent activity yet</p>
+                <p className="mt-1 text-xs text-gray-500">Your on-chain events will appear here after transactions.</p>
+              </div>
+            ) : (
+              recentActivityLogs.map((log) => {
+                const colors = getActivityColorClasses(log.color);
+                const content = toActivityContent(log);
 
-            <div className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-[#121212]">Risk Assessment Complete</p>
-                <p className="text-sm text-gray-600">Portfolio risk level: Medium</p>
-              </div>
-              <span className="text-xs text-gray-500">5h ago</span>
-            </div>
-
-            <div className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-[#121212]">Data Synced from Oracle</p>
-                <p className="text-sm text-gray-600">Latest market data updated via Chainlink</p>
-              </div>
-              <span className="text-xs text-gray-500">1d ago</span>
-            </div>
+                return (
+                  <div key={log.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full ${colors.bg} ${colors.text}`}>
+                      {getActivityIcon(log.type)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-[#121212]">{content.title}</p>
+                      <p className="text-sm text-gray-600">{content.description}</p>
+                    </div>
+                    <span className="text-xs text-gray-500">{formatRelativeTime(log.timestamp)}</span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
     </div>

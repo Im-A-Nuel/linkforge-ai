@@ -2,12 +2,14 @@
 
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useSetProfile, stringToRiskLevel, riskLevelToString } from '@/hooks/useContract';
 import { useCachedProfile } from '@/hooks/useCachedProfile';
+import { HydrationLoader, WalletRequiredState } from '@/components/ui/wallet-states';
+import { useToast } from '@/components/ui/toast';
 
 export default function Profile() {
   const { address, isConnected } = useAccount();
+  const { pushToast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [riskLevel, setRiskLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [esgPriority, setEsgPriority] = useState(true);
@@ -26,55 +28,58 @@ export default function Profile() {
 
   // Load profile data from contract when available
   useEffect(() => {
-    console.log('🔍 Profile data:', profile);
     if (profile) {
-      console.log('✅ Setting profile state:', {
-        riskLevel: profile.riskLevel,
-        esgPriority: profile.esgPriority,
-        automationEnabled: profile.automationEnabled,
-      });
       setRiskLevel(riskLevelToString(profile.riskLevel).toLowerCase() as 'low' | 'medium' | 'high');
       setEsgPriority(profile.esgPriority);
       setAutomationEnabled(profile.automationEnabled);
-    } else {
-      console.log('❌ No profile data available');
     }
   }, [profile]);
 
   // Force refresh after successful transaction with delay
   useEffect(() => {
     if (isSuccess) {
+      pushToast({
+        type: 'success',
+        title: 'Profile updated',
+        message: 'Your portfolio preferences are saved on-chain.',
+      });
+
       // Wait 3 seconds for blockchain to update, then force refresh
       const timer = setTimeout(() => {
         forceRefresh();
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [isSuccess, forceRefresh]);
+  }, [isSuccess, forceRefresh, pushToast]);
+
+  useEffect(() => {
+    if (!error) return;
+
+    pushToast({
+      type: 'error',
+      title: 'Failed to save profile',
+      message: error.message,
+      duration: 5600,
+    });
+  }, [error, pushToast]);
 
   // Prevent hydration mismatch - don't render until mounted
   if (!mounted) {
-    return null;
+    return (
+      <HydrationLoader
+        title="Loading profile settings"
+        subtitle="Checking wallet and reading latest preference state..."
+      />
+    );
   }
 
   if (!isConnected) {
     return (
-      <div className="flex min-h-[65vh] items-center justify-center px-6">
-        <div className="max-w-md w-full rounded-3xl border border-gray-200 bg-white p-8 shadow-xl text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
-            <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-black mb-3">Profile Settings</h2>
-          <p className="text-gray-600 mb-6">
-            Please connect your wallet to manage your profile and investment preferences.
-          </p>
-          <Link href="/" className="inline-block rounded-full bg-[#2b68ff] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1f57de]">
-            Go to Home
-          </Link>
-        </div>
-      </div>
+      <WalletRequiredState
+        title="Profile Access Locked"
+        description="Connect wallet to manage risk level, ESG priority, and automation preferences."
+        hint="These settings are tied to your wallet address."
+      />
     );
   }
 
@@ -82,8 +87,18 @@ export default function Profile() {
     try {
       const riskLevelEnum = stringToRiskLevel(riskLevel);
       setProfile(riskLevelEnum, esgPriority, automationEnabled);
+      pushToast({
+        type: 'info',
+        title: 'Transaction requested',
+        message: 'Approve the wallet prompt to save profile settings.',
+      });
     } catch (err) {
       console.error('Error saving profile:', err);
+      pushToast({
+        type: 'error',
+        title: 'Could not start transaction',
+        message: err instanceof Error ? err.message : 'Unexpected error',
+      });
     }
   };
 
@@ -271,24 +286,24 @@ export default function Profile() {
                   rel="noopener noreferrer"
                   className="underline hover:text-blue-900"
                 >
-                  View on BaseScan ↗
+                  View on BaseScan
                 </a>
               </p>
             </div>
           )}
 
           {isSuccess && (
-            <div className="rounded-2xl bg-green-50 p-4">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-green-700">
-                ✅ Profile saved successfully to blockchain!
+                Profile saved successfully to blockchain.
               </p>
             </div>
           )}
 
           {error && (
-            <div className="rounded-2xl bg-red-50 p-4">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
               <p className="text-sm font-semibold text-red-700">
-                ❌ Error: {error.message}
+                Error: {error.message}
               </p>
             </div>
           )}

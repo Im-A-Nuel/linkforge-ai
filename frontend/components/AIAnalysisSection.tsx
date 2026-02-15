@@ -1,22 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useRequestAIAnalysis, useLatestReasoning } from '@/hooks/useContract';
 import { useCachedProfile } from '@/hooks/useCachedProfile';
+import { CHAINLINK_FUNCTIONS_SOURCE } from '@/lib/functionsSource';
 import ReasoningCard from './ReasoningCard';
-
-// Chainlink Functions source code (ULTRA-TINY version - smallest possible!)
-// Uses only ETH to minimize calldata size and stay under Base Sepolia gas limit (~500 bytes)
-const FUNCTIONS_SOURCE = `const[u,r]=[args[0],+args[1]];const m=await Functions.makeHttpRequest({url:"https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true"});if(m.error)throw Error("Failed");const s=await Functions.makeHttpRequest({url:"https://api.alternative.me/fng/"});const sent=s.error?0:(+s.data.data[0].value-50)*2;const vol=Math.min(Math.abs(m.data.ethereum?.usd_24h_change||0)*20,100);const risk=Math.min(Math.round((sent<0?-sent:0)*.4+vol*.6),100);const act=risk>70&&r===0?1:vol>80?3:risk<30&&r===2&&sent>30?2:0;const {AbiCoder}=await import("npm:ethers@6.13.2");const coder=AbiCoder.defaultAbiCoder();const encoded=coder.encode(["int256","uint256","uint256","uint256","uint8","string"],[Math.round(sent*100),Math.round(vol),Math.round(risk),75,act,""]);const hex=encoded.slice(2);const out=new Uint8Array(hex.length/2);for(let i=0;i<out.length;i++){out[i]=parseInt(hex.slice(i*2,i*2+2),16)}return out;`.trim();
+import { useToast } from '@/components/ui/toast';
 
 export default function AIAnalysisSection() {
   const { address } = useAccount();
   const { profile } = useCachedProfile(address);
+  const { pushToast } = useToast();
   const [showInstructions, setShowInstructions] = useState(false);
   const [isSubmittingLocal, setIsSubmittingLocal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRevealingResult, setIsRevealingResult] = useState(false);
+  const previousHasReasoning = useRef(false);
+  const lastSuccessHash = useRef<string | undefined>(undefined);
+  const lastErrorToast = useRef<string | null>(null);
 
-  // Request AI analysis
   const {
     requestAnalysis,
     isPending,
@@ -26,15 +29,13 @@ export default function AIAnalysisSection() {
     errorMessage: requestErrorMessage,
   } = useRequestAIAnalysis();
 
-  // Get latest reasoning
   const { data: reasoning, refetch: refetchReasoning } = useLatestReasoning(address);
 
   const hasReasoning = reasoning && Number(reasoning.timestamp) > 0;
 
-  // Parse reasoning data
   const parsedReasoning = hasReasoning
     ? {
-        sentimentScore: Number(reasoning.sentimentScore) / 100, // Divide by 100 (was multiplied in Functions)
+        sentimentScore: Number(reasoning.sentimentScore) / 100,
         volatilityScore: Number(reasoning.volatilityScore),
         riskScore: Number(reasoning.riskScore),
         esgScore: Number(reasoning.esgScore),
@@ -44,269 +45,298 @@ export default function AIAnalysisSection() {
       }
     : null;
 
+  useEffect(() => {
+    if (hasReasoning && !previousHasReasoning.current) {
+      setIsRevealingResult(true);
+      pushToast({
+        type: 'success',
+        title: 'Analysis result is ready',
+        message: 'Fresh AI recommendation has been committed on-chain.',
+      });
+
+      const timer = setTimeout(() => setIsRevealingResult(false), 900);
+      previousHasReasoning.current = true;
+
+      return () => clearTimeout(timer);
+    }
+
+    previousHasReasoning.current = !!hasReasoning;
+  }, [hasReasoning, pushToast]);
+
+  useEffect(() => {
+    if (requestSuccess && requestHash && requestHash !== lastSuccessHash.current) {
+      pushToast({
+        type: 'success',
+        title: 'Request submitted',
+        message: 'Waiting for Chainlink DON response. Usually takes 30-60 seconds.',
+      });
+      lastSuccessHash.current = requestHash;
+    }
+  }, [requestSuccess, requestHash, pushToast]);
+
+  useEffect(() => {
+    if (!requestErrorMessage) return;
+
+    const lower = requestErrorMessage.toLowerCase();
+    if (lower.includes('user rejected') || lower.includes('user denied')) return;
+    if (requestErrorMessage === lastErrorToast.current) return;
+
+    pushToast({
+      type: 'error',
+      title: 'Analysis request failed',
+      message: requestErrorMessage,
+      duration: 5600,
+    });
+    lastErrorToast.current = requestErrorMessage;
+  }, [requestErrorMessage, pushToast]);
+
   const handleRequestAnalysis = async () => {
     if (isSubmittingLocal || isPending || isConfirming) {
       return;
     }
 
     if (!profile) {
-      alert('Please set your profile first in the Profile page');
+      pushToast({
+        type: 'warning',
+        title: 'Profile belum disetel',
+        message: 'Atur risk level, ESG, dan automation dulu di halaman Profile sebelum request analysis.',
+        duration: 5200,
+      });
       return;
     }
 
-    // Prepare arguments for Chainlink Functions (ULTRA-TINY version only needs 2 args)
-    const args = [
-      address || '0x0',
-      profile.riskLevel.toString(),
-    ];
+    const args = [address || '0x0', profile.riskLevel.toString(), profile.esgPriority ? 'true' : 'false'];
 
     setIsSubmittingLocal(true);
     try {
-      // Request AI analysis via Chainlink Functions
-      await requestAnalysis(FUNCTIONS_SOURCE, args);
-    } catch (err: any) {
-      const message = err?.message || '';
-
-      // Handle user rejection silently
+      await requestAnalysis(CHAINLINK_FUNCTIONS_SOURCE, args);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '';
       if (message.toLowerCase().includes('user rejected') || message.toLowerCase().includes('user denied')) {
-        console.log('User cancelled transaction');
-        // Don't show error for user cancellation
+        pushToast({
+          type: 'info',
+          title: 'Transaction cancelled',
+          message: 'No worries. You can retry whenever you are ready.',
+        });
         return;
       }
-      // For other errors, let the component show them
       console.error('Analysis request error:', err);
+      pushToast({
+        type: 'error',
+        title: 'Request failed to send',
+        message: message || 'Unexpected error while sending transaction.',
+      });
     } finally {
       setIsSubmittingLocal(false);
     }
   };
 
-  const handleRefresh = () => {
-    refetchReasoning();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await refetchReasoning();
+      const data = result.data as typeof reasoning;
+      if (data && data.timestamp && Number(data.timestamp) > 0) {
+        // Analysis found
+        console.log('Analysis found!');
+        pushToast({
+          type: 'success',
+          title: 'Result available',
+          message: 'Latest AI analysis has been loaded.',
+        });
+      } else {
+        // No analysis yet
+        pushToast({
+          type: 'info',
+          title: 'Still processing',
+          message: 'No result yet. Wait around 30-60 seconds and refresh again.',
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing:', error);
+      pushToast({
+        type: 'error',
+        title: 'Refresh failed',
+        message: 'Could not fetch latest result. Please try again.',
+      });
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-black text-[#121212]">AI-Powered Analysis</h2>
-          <p className="mt-1 text-gray-600">
-            Get personalized portfolio recommendations powered by Chainlink oracles
-          </p>
+    <div className="space-y-6 pb-10">
+      <div className="relative overflow-hidden rounded-3xl border border-[#dbe3f5] bg-[linear-gradient(135deg,#ffffff_0%,#f7faff_100%)] p-6 md:p-7">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-[#2b68ff]/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-12 h-40 w-40 rounded-full bg-[#00b388]/10 blur-3xl" />
+
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <p className="inline-flex items-center rounded-full border border-[#d5e4ff] bg-[#eef4ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#2b68ff]">
+              Portfolio Intelligence
+            </p>
+            <h2 className="mt-3 text-3xl font-black text-[#121212]">AI-Powered Analysis</h2>
+            <p className="mt-1 text-[#5b6a85]">Personalized recommendations generated from Chainlink-powered data signals.</p>
+          </div>
+          <button
+            onClick={() => setShowInstructions(!showInstructions)}
+            className="rounded-full border border-[#d5e0f6] bg-white px-4 py-2 text-sm font-semibold text-[#2b68ff] shadow-sm transition hover:border-[#bdd1ff] hover:bg-[#eff4ff]"
+          >
+            {showInstructions ? 'Hide' : 'How it works'}
+          </button>
         </div>
-        <button
-          onClick={() => setShowInstructions(!showInstructions)}
-          className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
-        >
-          {showInstructions ? 'Hide' : 'How it works'}
-        </button>
       </div>
 
-      {/* Instructions */}
       {showInstructions && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-          <h3 className="mb-3 font-bold text-blue-900">How AI Analysis Works</h3>
-          <ol className="space-y-2 text-sm text-blue-800">
-            <li className="flex gap-2">
-              <span className="font-bold">1.</span>
-              <span>
-                Click <strong>"Request AI Analysis"</strong> to trigger Chainlink Functions
-              </span>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold">2.</span>
-              <span>
-                Chainlink DON fetches real market data (prices, sentiment, volatility)
-              </span>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold">3.</span>
-              <span>AI analyzes data based on your risk profile and ESG preferences</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold">4.</span>
-              <span>
-                Results stored on-chain with recommendation (HOLD, SHIFT TO STABLE, etc.)
-              </span>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold">5.</span>
-              <span>
-                Review recommendation and execute rebalance if desired
-              </span>
-            </li>
+        <div className="rounded-2xl border border-[#ccdcff] bg-[linear-gradient(150deg,#edf4ff_0%,#f8fcff_100%)] p-5 shadow-[0_10px_24px_rgba(43,104,255,0.08)]">
+          <h3 className="mb-3 font-bold text-[#173272]">How AI Analysis Works</h3>
+          <ol className="space-y-2 text-sm text-[#244586]">
+            <li>1. Click Request AI Analysis to trigger Chainlink Functions.</li>
+            <li>2. Chainlink DON fetches market data and sentiment.</li>
+            <li>3. AI computes volatility, risk, and recommended action.</li>
+            <li>4. Results are committed on-chain and available in dashboard.</li>
           </ol>
 
-          <div className="mt-4 space-y-2">
-            <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-800">
-              <strong>💰 Cost Breakdown:</strong>
-              <ul className="mt-2 ml-4 list-disc space-y-1">
-                <li>Chainlink Functions: ~0.05 LINK (~$0.50)</li>
-                <li>Gas fees: ~$0.001-0.01 (Base Sepolia is cheap!)</li>
-                <li><strong>Total: ~$0.50-0.60 per analysis</strong></li>
-              </ul>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-900">
+              <p className="font-semibold">Cost estimate</p>
+              <p className="mt-1">~0.05 LINK execution cost plus network gas.</p>
             </div>
-
-            <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 text-xs text-orange-800">
-              <strong>⚠️ MetaMask Warning "Review alert":</strong>
-              <ul className="mt-2 ml-4 list-disc space-y-1">
-                <li><strong>This is NORMAL!</strong> MetaMask detects Chainlink Functions code</li>
-                <li>Contract is verified: <code>0x32A00...2D4C</code></li>
-                <li><strong>Fee ~$0.80 is expected</strong> (LINK payment included)</li>
-                <li>Click <strong>"Confirm"</strong> to proceed - it's safe!</li>
-              </ul>
+            <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-xs text-orange-900">
+              <p className="font-semibold">MetaMask review alert</p>
+              <p className="mt-1">Expected for Chainlink Functions calls. Contract is verified on BaseScan.</p>
             </div>
-
-            <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-xs text-green-800">
-              <strong>✅ Verify Transaction Safety:</strong>
-              <ul className="mt-2 ml-4 list-disc space-y-1">
-                <li>Network: <strong>Base Sepolia Testnet</strong> ✅</li>
-                <li>Contract: Verified on BaseScan ✅</li>
-                <li>No tokens being transferred ✅</li>
-                <li>Only triggering AI analysis ✅</li>
-              </ul>
+            <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-xs text-green-900">
+              <p className="font-semibold">Safety check</p>
+              <p className="mt-1">No token transfer in this action. It only requests analysis.</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Request Button */}
       {!hasReasoning && (
-        <div className="rounded-3xl border border-white/50 bg-gradient-to-br from-blue-50 to-purple-50 p-8 text-center shadow-lg">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-4xl">
-            🤖
+        <div className="rounded-3xl border border-[#dbe3f5] bg-white p-8 shadow-[0_20px_55px_rgba(15,34,72,0.1)]">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#eff3ff] text-[#2b68ff]">
+            <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3a2.25 2.25 0 00-2.25 2.25V7.5A2.25 2.25 0 009.75 9.75h4.5A2.25 2.25 0 0016.5 7.5V5.25A2.25 2.25 0 0014.25 3h-4.5zM4.5 12A2.25 2.25 0 016.75 9.75h10.5A2.25 2.25 0 0119.5 12v4.25a2.25 2.25 0 01-2.25 2.25h-10.5A2.25 2.25 0 014.5 16.25V12zM9 13.5h.008v.008H9V13.5zm6 0h.008v.008H15V13.5z" />
+            </svg>
           </div>
-          <h3 className="mb-2 text-2xl font-black text-[#121212]">
-            No Analysis Yet
-          </h3>
-          <p className="mb-6 text-gray-600">
-            Request your first AI-powered portfolio analysis
-          </p>
 
-          <div className="space-y-3">
-            {/* MetaMask Warning Pre-Info */}
-            <div className="rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-yellow-50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="text-2xl">⚠️</div>
-                <div className="flex-1 text-sm">
-                  <p className="font-bold text-orange-900 mb-2">
-                    MetaMask will show "Review alert" - This is Normal!
-                  </p>
-                  <ul className="space-y-1 text-orange-800">
-                    <li className="flex items-start gap-2">
-                      <span>✅</span>
-                      <span><strong>Contract verified</strong> on BaseScan</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span>✅</span>
-                      <span><strong>Fee ~$0.80</strong> is correct (includes LINK payment)</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span>✅</span>
-                      <span><strong>Safe to confirm</strong> - just triggering AI analysis</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+          <div className="text-center">
+            <h3 className="mb-2 text-2xl font-black text-[#121212]">No Analysis Yet</h3>
+            <p className="mb-6 text-gray-600">Request your first AI-powered portfolio analysis.</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-amber-200 bg-[linear-gradient(140deg,#fffdf5_0%,#fff5d9_100%)] p-5 text-sm text-amber-900">
+              <p className="mb-2 font-semibold">Review notice</p>
+              <ul className="space-y-1">
+                <li>Verified contract on BaseScan.</li>
+                <li>Estimated total cost around $0.60-$0.80 including LINK and gas.</li>
+                <li>Safe to confirm if transaction details match this contract.</li>
+              </ul>
             </div>
 
             <button
               onClick={handleRequestAnalysis}
               disabled={isSubmittingLocal || isPending || isConfirming}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-4 text-lg font-bold text-white shadow-xl transition hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="inline-flex w-full items-center justify-center rounded-full bg-[#2b68ff] px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-[#1f57de] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending && '⏳ Waiting for approval...'}
-              {isConfirming && '⏳ Requesting analysis...'}
-              {!isPending && !isConfirming && (
-                <>
-                  <span className="text-2xl">🚀</span>
-                  Request AI Analysis
-                </>
-              )}
+              {isPending && 'Waiting for approval...'}
+              {isConfirming && 'Requesting analysis...'}
+              {!isPending && !isConfirming && 'Request AI Analysis'}
             </button>
 
-            <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center text-xs text-blue-700">
-              <strong>💰 Cost:</strong> ~$0.60-0.80 total (LINK + gas)
-              {' • '}
-              <strong>⏱️ Time:</strong> 30-60s
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center text-xs text-blue-800">
+                <strong>Estimated cost:</strong> ~$0.60-$0.80
+              </div>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center text-xs text-blue-800">
+                <strong>Expected time:</strong> 30-60 seconds
+              </div>
             </div>
           </div>
 
           {requestErrorMessage &&
-           !requestErrorMessage.toLowerCase().includes('user rejected') &&
-           !requestErrorMessage.toLowerCase().includes('user denied') && (
-            <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              Error: {requestErrorMessage}
-              {requestErrorMessage.toLowerCase().includes('invalid chainlink functions subscription') && (
-                <div className="mt-2 text-xs text-red-800">
-                  Run <code>node check-subscription.js</code> then update subscription/consumer in Chainlink Functions.
-                </div>
-              )}
-            </div>
-          )}
+            !requestErrorMessage.toLowerCase().includes('user rejected') &&
+            !requestErrorMessage.toLowerCase().includes('user denied') && (
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                Error: {requestErrorMessage}
+                {requestErrorMessage.toLowerCase().includes('invalid chainlink functions subscription') && (
+                  <div className="mt-2 text-xs text-red-800">
+                    Run <code>node check-subscription.js</code> then update subscription and consumer in Chainlink Functions.
+                  </div>
+                )}
+              </div>
+            )}
 
           {requestSuccess && requestHash && (
             <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-              <p className="font-semibold">✅ Request submitted!</p>
-              <p className="mt-1">
-                Analysis in progress... This may take 30-60 seconds.
-              </p>
+              <p className="font-semibold">Request submitted successfully.</p>
+              <p className="mt-1">Analysis in progress. This may take 30-60 seconds.</p>
               <a
                 href={`https://sepolia.basescan.org/tx/${requestHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-2 inline-block text-blue-600 hover:underline"
               >
-                View transaction →
+                View transaction
               </a>
               <button
                 onClick={handleRefresh}
-                className="mt-2 ml-4 rounded-full bg-green-600 px-4 py-1 text-white hover:bg-green-700"
+                disabled={isRefreshing}
+                className="ml-4 mt-2 rounded-full bg-green-600 px-4 py-1 text-white transition hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Check Result
+                {isRefreshing ? 'Checking...' : 'Check result'}
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Analysis Result */}
       {hasReasoning && parsedReasoning && (
-        <div className="space-y-4">
+        <div className={`space-y-5 ${isRevealingResult ? 'ui-reveal-rise' : ''}`}>
           <ReasoningCard {...parsedReasoning} />
 
-          {/* Actions */}
-          <div className="flex gap-4">
+          <div
+            className={`grid gap-3 md:grid-cols-[1fr_auto] ${
+              isRevealingResult ? 'ui-stagger-up' : ''
+            }`}
+            style={isRevealingResult ? { animationDelay: '80ms' } : undefined}
+          >
             <button
               onClick={handleRequestAnalysis}
               disabled={isSubmittingLocal || isPending || isConfirming}
-              className="flex-1 rounded-full bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-full bg-[linear-gradient(135deg,#2b68ff_0%,#1f57de_100%)] px-7 py-3.5 font-semibold text-white shadow-[0_14px_26px_rgba(43,104,255,0.35)] transition hover:translate-y-[-1px] hover:shadow-[0_16px_28px_rgba(43,104,255,0.4)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending || isConfirming ? '⏳ Requesting...' : '🔄 Request New Analysis'}
+              {isPending || isConfirming ? 'Requesting...' : 'Request New Analysis'}
             </button>
 
             <button
               onClick={handleRefresh}
-              className="rounded-full border-2 border-gray-200 bg-white px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50"
+              disabled={isRefreshing}
+              className="rounded-full border-2 border-[#d4deef] bg-white px-6 py-3 font-semibold text-[#46587a] transition hover:border-[#c1d0ea] hover:bg-[#f7faff] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ♻️ Refresh
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
 
-          {/* Execute Rebalance (coming soon) */}
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center">
-            <p className="text-sm text-gray-600 mb-3">
+          <div
+            className={`rounded-3xl border border-[#dbe2f3] bg-[linear-gradient(160deg,#f8faff_0%,#f1f5fc_100%)] p-6 text-center ${
+              isRevealingResult ? 'ui-stagger-up' : ''
+            }`}
+            style={isRevealingResult ? { animationDelay: '150ms' } : undefined}
+          >
+            <p className="mb-3 text-sm text-[#5d6d88]">
               <strong>Manual Rebalance:</strong> Execute the recommended action
             </p>
             <button
               disabled
-              className="rounded-full bg-gray-300 px-6 py-3 font-semibold text-gray-500 cursor-not-allowed"
+              className="cursor-not-allowed rounded-full bg-[#c8d2e5] px-6 py-3 font-semibold text-[#5f6f8a]"
             >
-              🚧 Execute Rebalance (Coming Soon)
+              Execute Rebalance (Coming Soon)
             </button>
-            <p className="mt-2 text-xs text-gray-500">
-              Manual rebalance requires portfolio integration
-            </p>
+            <p className="mt-2 text-xs text-[#7283a1]">Manual rebalance requires portfolio integration.</p>
           </div>
         </div>
       )}
