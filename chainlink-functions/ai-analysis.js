@@ -242,15 +242,31 @@ console.log("Analysis complete:", {
 });
 
 // 6. Encode response
-// Format: [sentimentScore(int256), volatilityScore(uint256), riskScore(uint256), esgScore(uint256), action(uint8)]
-// Multiply sentiment by 100 to preserve decimals (since Solidity doesn't have decimals)
-const response = Functions.encodeUint256(
-  BigInt(sentimentScore) * 100n // int256 (can be negative)
-) +
-Functions.encodeUint256(BigInt(volatilityScore)) +
-Functions.encodeUint256(BigInt(riskScore)) +
-Functions.encodeUint256(BigInt(esgScore)) +
-Functions.encodeUint256(BigInt(recommendedAction));
+// Solidity decode shape:
+// (int256 sentimentScore, uint256 volatilityScore, uint256 riskScore, uint256 esgScore, uint256 actionIndex, string ipfsHash)
+const concatBytes = (...parts) => {
+  let totalLength = 0;
+  for (const part of parts) totalLength += part.length;
 
-// Return the encoded response
-return Functions.hexToBytes(response);
+  const out = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+};
+
+// Use empty ipfsHash so response stays compact:
+// words: [sentiment, volatility, risk, esg, action, offset=192, length=0]
+const response = concatBytes(
+  Functions.encodeInt256(BigInt(sentimentScore) * 100n),
+  Functions.encodeUint256(BigInt(volatilityScore)),
+  Functions.encodeUint256(BigInt(riskScore)),
+  Functions.encodeUint256(BigInt(esgScore)),
+  Functions.encodeUint256(BigInt(recommendedAction)),
+  Functions.encodeUint256(192n),
+  Functions.encodeUint256(0n)
+);
+
+return response;
