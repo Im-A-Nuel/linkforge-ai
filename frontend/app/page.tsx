@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -386,13 +387,15 @@ export default function LandingPage() {
 
         <header className="relative z-20">
           <div className="mx-auto flex w-full max-w-[1220px] items-center justify-between px-6 py-8">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#1f6fff] text-white">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M13 3L4 14h7v7l9-11h-7V3z" />
-                </svg>
-              </span>
-              <span className="text-3xl font-extrabold tracking-tight">linkforge</span>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/icon/LinkForge%20AI%20logo.png"
+                alt="LinkForge AI"
+                width={320}
+                height={96}
+                priority
+                className="h-14 w-auto md:h-16"
+              />
             </Link>
 
             <nav className="hidden items-center gap-10 text-[17px] font-medium text-[#444] lg:flex">
@@ -463,11 +466,13 @@ export default function LandingPage() {
               <span className="block">{t.hero.line1}</span>
               <span className="block">{t.hero.line2}</span>
               <span className="mt-3 inline-flex items-center gap-3">
-                <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#2b68ff] text-white md:h-16 md:w-16">
-                  <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 3L4 14h7v7l9-11h-7V3z" />
-                  </svg>
-                </span>
+                <Image
+                  src="/icon/LinkForge%20AI%20logo.png"
+                  alt="LinkForge AI"
+                  width={64}
+                  height={64}
+                  className="h-14 w-14 rounded-full object-cover shadow-[0_14px_30px_rgba(43,104,255,0.32)] md:h-16 md:w-16"
+                />
                 <span>{t.hero.line3}</span>
               </span>
               <span className="mt-4 inline-block rounded-xl bg-[#1f6fff] px-5 py-2.5 text-white">{t.hero.highlight}</span>

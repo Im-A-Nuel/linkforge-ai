@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
 import { riskLevelToString } from '@/hooks/useContract';
@@ -7,6 +8,8 @@ import { useCachedProfile } from '@/hooks/useCachedProfile';
 import { useEventLogs, type EventLog } from '@/hooks/useEventLogs';
 import AIAnalysisSection from '@/components/AIAnalysisSection';
 import { HydrationLoader, WalletRequiredState } from '@/components/ui/wallet-states';
+
+const PROJECT_LOGO = '/icon/LinkForge%20AI%20logo.png';
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
@@ -55,9 +58,13 @@ export default function Dashboard() {
     switch (type) {
       case 'RebalanceExecuted':
         return (
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+          <Image
+            src={PROJECT_LOGO}
+            alt="LinkForge AI"
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-full object-cover"
+          />
         );
       case 'ProfileUpdated':
         return (
@@ -334,7 +341,7 @@ export default function Dashboard() {
 
                 return (
                   <div key={log.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-full ${colors.bg} ${colors.text}`}>
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-full ${colors.bg} ${colors.text}`}>
                       {getActivityIcon(log.type)}
                     </div>
                     <div className="flex-1">

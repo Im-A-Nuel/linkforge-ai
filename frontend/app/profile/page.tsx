@@ -1,11 +1,14 @@
 'use client';
 
+import Image from 'next/image';
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
 import { useSetProfile, stringToRiskLevel, riskLevelToString } from '@/hooks/useContract';
 import { useCachedProfile } from '@/hooks/useCachedProfile';
 import { HydrationLoader, WalletRequiredState } from '@/components/ui/wallet-states';
 import { useToast } from '@/components/ui/toast';
+
+const PROJECT_LOGO = '/icon/LinkForge%20AI%20logo.png';
 
 export default function Profile() {
   const { address, isConnected } = useAccount();
@@ -226,10 +229,14 @@ export default function Profile() {
         {/* Chainlink Automation Card */}
         <div className="rounded-3xl border border-white/50 bg-white p-6 shadow-lg">
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600">
-              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div className="flex h-12 w-12 items-center justify-center">
+              <Image
+                src={PROJECT_LOGO}
+                alt="LinkForge AI"
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-full object-cover shadow-[0_10px_24px_rgba(43,104,255,0.28)]"
+              />
             </div>
             <div>
               <h2 className="text-xl font-black text-[#121212]">Chainlink Automation</h2>

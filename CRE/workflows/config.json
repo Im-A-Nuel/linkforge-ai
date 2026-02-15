@@ -1,0 +1,18 @@
+{
+  "schedule": {
+    "schedule": "0 */5 * * * *"
+  },
+  "evm": {
+    "chainSelectorName": "base-sepolia",
+    "contractAddress": "0xC095A56a6f915fAD1Cdb14571135dEE86c879E32",
+    "userAddress": "0xAb4cBeFaeb226BC23F6399E0327F40e362cdDC3B"
+  },
+  "apis": {
+    "fearGreedUrl": "https://api.alternative.me/fng/",
+    "coingeckoUrl": "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin&vs_currencies=usd&include_24hr_change=true"
+  },
+  "thresholds": {
+    "highRisk": 70,
+    "highVolatility": 80
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "linkforge-cre-workflow",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "simulate": "cre workflow simulate --target local-simulation --config workflows/config.json workflows/linkforge-ai-orchestrator.ts",
+    "simulate:broadcast": "cre workflow simulate --broadcast --target local-simulation --config workflows/config.json workflows/linkforge-ai-orchestrator.ts"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.0.9",
+    "viem": "^2.45.3",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
