@@ -40,8 +40,30 @@ if (riskScore > 70 && risk === 0) action = 1; // SHIFT_TO_STABLE
 else if (volatility > 80) action = 3; // DIVERSIFY
 else if (riskScore < 30 && risk === 2 && sentiment > 30) action = 2; // INCREASE_EXPOSURE
 
-// Encode response
+// Encode response for solidity tuple:
+// (int256 sentimentScore, uint256 volatilityScore, uint256 riskScore, uint256 esgScore, uint256 action, string ipfsHash)
+const concatBytes = (...parts) => {
+  let totalLength = 0;
+  for (const part of parts) totalLength += part.length;
+
+  const out = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+};
+
 const enc = (v) => Functions.encodeUint256(BigInt(v));
-return Functions.hexToBytes(
-  enc(sentiment * 100) + enc(volatility) + enc(riskScore) + enc(esgScore) + enc(action)
+const encInt = (v) => Functions.encodeInt256(BigInt(Math.round(v)));
+
+return concatBytes(
+  encInt(sentiment * 100),
+  enc(volatility),
+  enc(riskScore),
+  enc(esgScore),
+  enc(action),
+  enc(192),
+  enc(0)
 );
