@@ -79,12 +79,34 @@ Detailed CRE instructions:
 
 ## Demo Video (Required for Submission)
 
+- Public source repository: `https://github.com/Im-A-Nuel/linkforge-ai`
 - Public 3-5 minute video URL: `ADD_PUBLIC_VIDEO_URL_HERE`
 - Video should show:
   - wallet/profile setup,
   - AI analysis flow,
   - on-chain events,
   - CRE workflow simulation command + output.
+- Full recording script:
+  - `docs/VIDEO-DEMO-SCRIPT.md`
+
+## Simulation Evidence (Captured)
+
+Latest standalone workflow simulation output (for demo recording):
+
+```bash
+cd CRE
+node --experimental-strip-types simulate-standalone.ts
+```
+
+Result snapshot:
+- `riskLevel=MEDIUM`
+- `esgPriority=true`
+- `automationEnabled=false`
+- `fearGreedIndex=8`
+- `sentiment=-84`
+- `volatility=20`
+- `action=HOLD`
+- `riskScore=46`
 
 ## Chainlink File Index (Required)
 

@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import sentimentRoutes from './routes/sentiment.js';
 import riskRoutes from './routes/risk.js';
 import esgRoutes from './routes/esg.js';
+import creRoutes from './routes/cre.js';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ fastify.get('/health', async () => {
 fastify.register(sentimentRoutes, { prefix: '/api' });
 fastify.register(riskRoutes, { prefix: '/api' });
 fastify.register(esgRoutes, { prefix: '/api' });
+fastify.register(creRoutes, { prefix: '/api' });
 
 // Start server
 const start = async () => {

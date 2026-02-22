@@ -9,9 +9,10 @@ Use this checklist before final submission.
 - [x] Workflow integrates blockchain + external API:
   - Blockchain read: `getProfile(address)` from `LinkForgeAI`
   - External APIs: Fear & Greed + CoinGecko
-- [x] CRE CLI simulation executed and output captured
+- [x] Workflow simulation executed and output captured
   - Standalone simulation: `node --experimental-strip-types simulate-standalone.ts`
-  - Output: riskLevel=MEDIUM, sentiment=-84, volatility=19, action=HOLD, riskScore=45
+  - Output: riskLevel=MEDIUM, sentiment=-84, volatility=20, action=HOLD, riskScore=46
+  - Profile snapshot: esgPriority=true, automationEnabled=false, lastRebalance=never
   - Contract read verified on-chain: Base Sepolia `0xC095A56a6f915fAD1Cdb14571135dEE86c879E32`
   - Live APIs: Fear & Greed Index (raw=8/100) + CoinGecko ETH/BTC 24h change
 - [ ] (Alternative) live deployment on CRE network completed
@@ -19,8 +20,14 @@ Use this checklist before final submission.
 ## Required Submission Artifacts
 
 - [ ] Public 3-5 minute demo video URL added to `README.md`
-- [ ] Public source repository available
+- [x] Public source repository available
+  - `https://github.com/Im-A-Nuel/linkforge-ai`
 - [x] README includes links to files that use Chainlink
+
+## Current Status
+
+- Remaining before final submit: add public demo video URL in `README.md`.
+- Video script prepared in `docs/VIDEO-DEMO-SCRIPT.md`.
 
 ## Suggested Demo Flow (Video)
 

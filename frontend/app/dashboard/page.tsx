@@ -8,6 +8,8 @@ import { useCachedProfile } from '@/hooks/useCachedProfile';
 import { useEventLogs, type EventLog } from '@/hooks/useEventLogs';
 import AIAnalysisSection from '@/components/AIAnalysisSection';
 import { HydrationLoader, WalletRequiredState } from '@/components/ui/wallet-states';
+import { useQuery } from '@tanstack/react-query';
+import { config } from '@/lib/config';
 
 const PROJECT_LOGO = '/icon/LinkForge%20AI%20logo.png';
 
@@ -243,7 +245,7 @@ export default function Dashboard() {
           <div className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white p-6 shadow-lg transition hover:shadow-xl">
             <div className="absolute right-4 top-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-white">
               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 21c3-8 9-13 15-14-1 6-6 12-14 15M6 21l9-9" />
               </svg>
             </div>
             <div className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">
@@ -312,6 +314,9 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* CRE Live Signal */}
+        <CRELiveSignal />
+
         {/* AI Analysis Section */}
         <AIAnalysisSection />
 
@@ -355,6 +360,301 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+    </div>
+  );
+}
+
+
+type RebalanceAction = 'HOLD' | 'SHIFT_TO_STABLE' | 'INCREASE_EXPOSURE' | 'DIVERSIFY';
+
+interface CREData {
+  action: RebalanceAction;
+  riskScore: number;
+  reason: string;
+  signals: {
+    fearGreedIndex: number;
+    sentimentScore: number;
+    volatilityScore: number;
+    ethChange24h: number;
+    btcChange24h: number;
+  };
+  sources: { fearGreed: string; coingecko: string };
+  generatedAt: string;
+  schedule: string;
+}
+
+const ACTION_LABEL: Record<RebalanceAction, string> = {
+  HOLD: 'HOLD',
+  SHIFT_TO_STABLE: 'SHIFT TO STABLE',
+  INCREASE_EXPOSURE: 'INCREASE EXPOSURE',
+  DIVERSIFY: 'DIVERSIFY',
+};
+
+const ACTION_COLOR: Record<RebalanceAction, string> = {
+  HOLD: 'text-emerald-600',
+  SHIFT_TO_STABLE: 'text-amber-600',
+  INCREASE_EXPOSURE: 'text-[#2b68ff]',
+  DIVERSIFY: 'text-cyan-600',
+};
+
+const ACTION_ACCENT: Record<RebalanceAction, string> = {
+  HOLD: 'from-emerald-500 to-teal-500',
+  SHIFT_TO_STABLE: 'from-amber-500 to-orange-500',
+  INCREASE_EXPOSURE: 'from-[#2b68ff] to-[#6f94ff]',
+  DIVERSIFY: 'from-cyan-500 to-sky-500',
+};
+
+const ACTION_PILL: Record<RebalanceAction, string> = {
+  HOLD: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  SHIFT_TO_STABLE: 'border-amber-200 bg-amber-50 text-amber-700',
+  INCREASE_EXPOSURE: 'border-[#c8d8ff] bg-[#edf3ff] text-[#2b68ff]',
+  DIVERSIFY: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+};
+
+function getRiskMeta(riskScore: number) {
+  if (riskScore >= 70) {
+    return {
+      label: 'High risk',
+      pillClass: 'border-rose-200 bg-rose-50 text-rose-700',
+      progressClass: 'from-rose-500 to-rose-400',
+    };
+  }
+
+  if (riskScore >= 40) {
+    return {
+      label: 'Moderate risk',
+      pillClass: 'border-amber-200 bg-amber-50 text-amber-700',
+      progressClass: 'from-amber-500 to-yellow-400',
+    };
+  }
+
+  return {
+    label: 'Low risk',
+    pillClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    progressClass: 'from-emerald-500 to-teal-400',
+  };
+}
+
+function CRELiveSignal() {
+  const { data, isLoading, isError } = useQuery<CREData>({
+    queryKey: ['cre-recommendation'],
+    queryFn: async () => {
+      const res = await fetch(`${config.backendUrl}/api/cre-recommendation`);
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 4 * 60 * 1000,
+  });
+
+  const actionColor = data ? ACTION_COLOR[data.action] : 'text-emerald-600';
+  const accentBar = data ? ACTION_ACCENT[data.action] : 'from-emerald-500 to-teal-500';
+  const actionPill = data
+    ? ACTION_PILL[data.action]
+    : 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  const riskMeta = data ? getRiskMeta(data.riskScore) : getRiskMeta(50);
+  const confidenceScore = data
+    ? Math.max(18, Math.min(96, 100 - data.signals.volatilityScore))
+    : 60;
+  const updatedAt = data ? new Date(data.generatedAt) : null;
+
+  const metrics = data
+    ? [
+        {
+          label: 'Fear & Greed',
+          value: `${data.signals.fearGreedIndex}`,
+          unit: '/100',
+          sub: data.sources.fearGreed,
+          color:
+            data.signals.fearGreedIndex <= 25
+              ? 'text-rose-500'
+              : data.signals.fearGreedIndex >= 75
+              ? 'text-emerald-600'
+              : 'text-amber-500',
+        },
+        {
+          label: 'Sentiment',
+          value:
+            data.signals.sentimentScore > 0
+              ? `+${data.signals.sentimentScore}`
+              : `${data.signals.sentimentScore}`,
+          unit: '',
+          sub: 'score',
+          color: data.signals.sentimentScore >= 0 ? 'text-emerald-600' : 'text-rose-500',
+        },
+        {
+          label: 'Volatility',
+          value: `${data.signals.volatilityScore}`,
+          unit: '/100',
+          sub: 'score',
+          color:
+            data.signals.volatilityScore > 60
+              ? 'text-rose-500'
+              : data.signals.volatilityScore > 30
+              ? 'text-amber-500'
+              : 'text-emerald-600',
+        },
+        {
+          label: 'ETH 24H',
+          value: `${data.signals.ethChange24h >= 0 ? '+' : ''}${data.signals.ethChange24h.toFixed(2)}`,
+          unit: '%',
+          sub: data.sources.coingecko,
+          color: data.signals.ethChange24h >= 0 ? 'text-emerald-600' : 'text-rose-500',
+        },
+        {
+          label: 'BTC 24H',
+          value: `${data.signals.btcChange24h >= 0 ? '+' : ''}${data.signals.btcChange24h.toFixed(2)}`,
+          unit: '%',
+          sub: data.sources.coingecko,
+          color: data.signals.btcChange24h >= 0 ? 'text-emerald-600' : 'text-rose-500',
+        },
+      ]
+    : [];
+
+  return (
+    <div className="ui-reveal-rise relative overflow-hidden rounded-[30px] border border-[#d6e3ff] bg-gradient-to-br from-[#f8fbff] via-white to-[#edf3ff] shadow-[0_16px_54px_rgba(43,104,255,0.12)]">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-24 top-2 h-56 w-56 rounded-full bg-[#2b68ff]/12 blur-3xl" />
+        <div className="absolute -right-12 bottom-0 h-52 w-52 rounded-full bg-[#00b8ff]/12 blur-3xl" />
+      </div>
+
+      <div className={`relative h-1 w-full bg-gradient-to-r ${accentBar}`} />
+
+      <div className="relative border-b border-[#dce6f7] px-6 py-5 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-[15px] font-black leading-none tracking-tight text-[#121212]">
+              CRE Live Signal
+            </p>
+            <p className="mt-1 text-xs font-medium text-[#586985]">
+              Chainlink Runtime Environment - auto-refresh every 5 min
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden rounded-full border border-[#d8e4ff] bg-white/80 px-3 py-1 text-[11px] font-semibold text-[#385eb3] sm:block">
+              Oracle stream active
+            </div>
+            <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <span className="text-xs font-bold tracking-wide text-emerald-700">LIVE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isLoading && (
+        <div className="relative flex items-center gap-3 px-6 py-11 text-sm text-[#607090] sm:px-8">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#d7e4ff] border-t-[#2b68ff]" />
+          Fetching market signals...
+        </div>
+      )}
+
+      {isError && (
+        <div className="relative px-6 py-8 sm:px-8">
+          <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            Backend unavailable. Start backend server to see CRE signals.
+          </p>
+        </div>
+      )}
+
+      {data && (
+        <>
+          <div className="relative px-6 pb-5 pt-7 sm:px-8">
+            <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <div
+                  className={`mb-4 inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.11em] ${actionPill}`}
+                >
+                  {ACTION_LABEL[data.action]}
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#607291]">
+                  Live Market Signal
+                </p>
+                <p
+                  className={`mt-2 max-w-[14ch] text-5xl font-black leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl ${actionColor}`}
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {ACTION_LABEL[data.action]}
+                </p>
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[#4d5e7d] sm:text-base">
+                  {data.reason}
+                </p>
+              </div>
+
+              <div className="w-full max-w-xs rounded-2xl border border-[#d8e4ff] bg-white/90 p-4 shadow-[0_10px_28px_rgba(47,87,170,0.14)] backdrop-blur">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#607291]">
+                      Risk score
+                    </p>
+                    <p className="mt-1 text-5xl font-black leading-none text-[#121212]">
+                      {data.riskScore}
+                      <span className="ml-1 text-lg font-semibold text-[#7b89a5]">/100</span>
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${riskMeta.pillClass}`}
+                  >
+                    {riskMeta.label}
+                  </span>
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-[#6a7895]">
+                    <span>Model confidence</span>
+                    <span>{confidenceScore}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#d9e4fa]">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${riskMeta.progressClass}`}
+                      style={{ width: `${confidenceScore}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative border-y border-[#dce6f7] bg-white/60 px-4 py-4 sm:px-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {metrics.map((m) => (
+                <div
+                  key={m.label}
+                  className="rounded-2xl border border-[#dce7fb] bg-white/80 px-4 py-3 text-center shadow-[0_6px_18px_rgba(43,104,255,0.08)] backdrop-blur"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6f7f9d]">
+                    {m.label}
+                  </p>
+                  <p className={`mt-2 text-[22px] font-black leading-none ${m.color}`}>
+                    {m.value}
+                    {m.unit && (
+                      <span className="ml-0.5 text-[12px] font-semibold text-[#7f8daa]">
+                        {m.unit}
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.08em] text-[#8b95ab]">
+                    {m.sub}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative flex flex-col gap-2 px-6 py-4 text-[11px] font-semibold text-[#6e7d98] sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <p className="font-mono uppercase tracking-[0.12em]">Schedule: {data.schedule}</p>
+            <p>
+              Updated{' '}
+              {updatedAt
+                ? `${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString()}`
+                : '--'}
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

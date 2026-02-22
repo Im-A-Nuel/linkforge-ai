@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
 import { ConnectWallet } from '@/components/connect-wallet';
+import { LanguageSelector } from '@/components/LanguageSelector';
+import { useLanguage } from '@/hooks/useLanguage';
 import { config } from '@/lib/config';
 
 const topLinks = [
@@ -16,11 +18,10 @@ const topLinks = [
   { href: '#join', key: 'join' },
 ] as const;
 
-const languageOptions = [
-  { value: 'en', label: 'English' },
-  { value: 'zh', label: 'Mandarin (中文)' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'id', label: 'Bahasa Indonesia' },
+const footerLinks = [
+  { href: '#how-it-works', label: 'Docs' },
+  { href: '#about', label: 'About' },
+  { href: '#policy', label: 'Policy' },
 ] as const;
 
 const translations = {
@@ -244,8 +245,6 @@ const translations = {
   },
 } as const;
 
-type Language = keyof typeof translations;
-
 const DEMO_ASSET = 'ETH';
 const DEMO_FALLBACK_ADDRESS = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
@@ -314,8 +313,7 @@ function getRecommendation(sentiment: number | undefined, riskLevel: RiskData['r
 }
 
 export default function LandingPage() {
-  const [language, setLanguage] = useState<Language>('en');
-  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const { language } = useLanguage();
   const [displayScore, setDisplayScore] = useState(0);
 
   useEffect(() => {
@@ -378,27 +376,40 @@ export default function LandingPage() {
   const riskPercent = riskQuery.data?.riskLevel === 'high' ? 90 : riskQuery.data?.riskLevel === 'low' ? 25 : 55;
 
   return (
-    <div className="bg-[#ececec] text-[#121212]">
+    <div
+      className="text-[#121212]"
+      style={{
+        backgroundColor: '#ffffff',
+        backgroundImage: `radial-gradient(circle, rgba(43,104,255,0.18) 1.5px, transparent 1.5px)`,
+        backgroundSize: '24px 24px',
+      }}
+    >
       <section className="relative overflow-x-clip">
+        {/* Soft colour blobs */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -left-24 top-20 h-80 w-80 rounded-full bg-[#1f6fff]/10 blur-3xl" />
-          <div className="absolute right-10 top-40 h-64 w-64 rounded-full bg-[#ffcd4d]/20 blur-3xl" />
+          <div className="absolute right-10 top-40 h-64 w-64 rounded-full bg-[#ffcd4d]/15 blur-3xl" />
         </div>
 
-        <header className="relative z-20">
-          <div className="mx-auto flex w-full max-w-[1220px] items-center justify-between px-6 py-8">
-            <Link href="/" className="flex items-center">
+        <header className="relative z-20 px-1 pt-5">
+          <div className="mx-auto flex h-14 w-full max-w-[1220px] items-center justify-between rounded-full border border-[#e2e8f0] bg-white/95 px-4 shadow-[0_4px_24px_rgba(0,0,0,0.07)] backdrop-blur-md" style={{ overflow: 'visible' }}>
+            {/* Logo */}
+            <Link href="/" className="flex shrink-0 items-center gap-2.5">
               <Image
                 src="/icon/LinkForge%20AI%20logo.png"
                 alt="LinkForge AI"
-                width={320}
-                height={96}
+                width={44}
+                height={44}
                 priority
-                className="h-14 w-auto md:h-16"
+                className="h-11 w-11 rounded-full object-cover shadow-[0_2px_8px_rgba(43,104,255,0.25)]"
               />
+              <span className="text-[1.35rem] font-black leading-none tracking-tight">
+                LinkForge <span className="text-[#2b68ff]">AI</span>
+              </span>
             </Link>
 
-            <nav className="hidden items-center gap-10 text-[17px] font-medium text-[#444] lg:flex">
+            {/* Nav links */}
+            <nav className="hidden items-center gap-8 text-[15px] font-medium text-[#444] lg:flex">
               {topLinks.map((item) => (
                 <Link key={item.key} href={item.href} className="transition-colors hover:text-[#1f6fff]">
                   {t.nav[item.key as keyof typeof t.nav]}
@@ -406,61 +417,15 @@ export default function LandingPage() {
               ))}
             </nav>
 
-            <div className="flex items-center gap-3">
-              {/* Language Selector */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowLanguageMenu(!showLanguageMenu)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-gray-200 bg-white text-lg transition-all hover:border-blue-500 hover:shadow-md"
-                >
-                  {language === 'en' && '🇬🇧'}
-                  {language === 'zh' && '🇨🇳'}
-                  {language === 'de' && '🇩🇪'}
-                  {language === 'id' && '🇮🇩'}
-                </button>
-
-                {showLanguageMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowLanguageMenu(false)}
-                    />
-                    <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
-                      {languageOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setLanguage(option.value as Language);
-                            setShowLanguageMenu(false);
-                          }}
-                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
-                            language === option.value
-                              ? 'bg-blue-50 text-blue-600'
-                              : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          <span className="text-xl">
-                            {option.value === 'en' && '🇬🇧'}
-                            {option.value === 'zh' && '🇨🇳'}
-                            {option.value === 'de' && '🇩🇪'}
-                            {option.value === 'id' && '🇮🇩'}
-                          </span>
-                          <span className="font-medium">{option.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-
+            {/* Actions */}
+            <div className="flex items-center gap-2.5">
+              <LanguageSelector />
               <ConnectWallet label={connectLabel} />
             </div>
           </div>
         </header>
 
-        <main id="hero" className="relative z-10 mx-auto grid w-full max-w-[1220px] gap-16 px-6 pb-28 pt-8 lg:grid-cols-[1fr_1fr] lg:items-start">
+        <main id="hero" className="relative z-10 mx-auto grid w-full max-w-[1220px] gap-10 px-6 pb-6 pt-8 lg:grid-cols-[1fr_1fr] lg:items-start">
           <section className="animate-rise-up">
             <h1 className="max-w-[650px] text-[clamp(2.7rem,6vw,5.8rem)] font-black leading-[0.98] tracking-[-0.03em]">
               <span className="block">{t.hero.line1}</span>
@@ -500,6 +465,7 @@ export default function LandingPage() {
               </div>
               <p className="text-lg leading-tight text-[#2f2f2f] md:text-2xl">{t.hero.trusted}</p>
             </div>
+
           </section>
 
           <section className="relative mx-auto w-full max-w-[560px] lg:pl-4">
@@ -673,11 +639,34 @@ export default function LandingPage() {
           </section>
         </main>
 
-        <section className="relative z-10 mx-auto mb-12 flex w-full max-w-[1220px] flex-wrap gap-4 px-6 text-[#2e2e2e]">
-          {t.chips.map((chip) => (
-            <div key={chip} className="rounded-2xl bg-white/75 px-5 py-4 text-sm font-semibold">{chip}</div>
-          ))}
-        </section>
+        {/* Full-width stats + chips strip — fills the gap between hero grid and wave */}
+        <div className="relative z-10 mx-auto w-full max-w-[1220px] px-6 pb-8">
+          {/* Stats row */}
+          <div className="mb-4 grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              { label: 'Chainlink Feeds', value: 'ETH/USD', sub: '↑ Live oracle', subColor: 'text-emerald-600' },
+              { label: 'Automation', value: '5-min', sub: '↻ CRE cycle', subColor: 'text-[#2b68ff]' },
+              { label: 'Network', value: 'Base', sub: 'Sepolia testnet', subColor: 'text-[#888]' },
+              { label: 'Risk Engine', value: 'On-chain', sub: 'Smart contract', subColor: 'text-[#888]' },
+              { label: 'Functions', value: 'DON', sub: 'Off-chain compute', subColor: 'text-[#888]' },
+              { label: 'Audit Trail', value: '100%', sub: 'On-chain verifiable', subColor: 'text-emerald-600' },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-[#e0e0e0] bg-white/80 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#999]">{stat.label}</p>
+                <p className="mt-1 text-lg font-black text-[#121212]">{stat.value}</p>
+                <p className={`mt-0.5 text-[11px] font-medium ${stat.subColor}`}>{stat.sub}</p>
+              </div>
+            ))}
+          </div>
+          {/* Feature chips */}
+          <div className="flex flex-wrap gap-3">
+            {t.chips.map((chip) => (
+              <div key={chip} className="rounded-xl bg-white/75 px-4 py-2.5 text-xs font-semibold text-[#2e2e2e] shadow-sm">
+                {chip}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Animated Wave Ribbon */}
         <div className="pointer-events-none relative z-10 overflow-hidden" style={{ height: '180px' }}>
@@ -947,6 +936,29 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <footer id="policy" className="border-t border-[#d8e2ff] bg-gradient-to-b from-[#eef4ff] to-[#f7f9ff]">
+        <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black tracking-tight text-[#111827]">LinkForge AI</p>
+            <p className="mt-1 text-xs font-medium text-[#607090]">
+              On-chain portfolio automation with verifiable Chainlink data.
+            </p>
+          </div>
+
+          <nav className="flex items-center gap-2">
+            {footerLinks.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="rounded-full border border-[#d5e1ff] bg-white px-4 py-1.5 text-xs font-semibold text-[#2454d6] transition hover:border-[#b9ccff] hover:bg-[#edf3ff]"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </footer>
 
       <style jsx global>{`
         @keyframes rise-up {
