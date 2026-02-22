@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "simulate": "cre workflow simulate --target local-simulation --config workflows/config.json workflows/linkforge-ai-orchestrator.ts",
-    "simulate:broadcast": "cre workflow simulate --broadcast --target local-simulation --config workflows/config.json workflows/linkforge-ai-orchestrator.ts"
+    "simulate:broadcast": "cre workflow simulate --broadcast --target local-simulation --config workflows/config.json workflows/linkforge-ai-orchestrator.ts",
+    "simulate:standalone": "node --experimental-strip-types simulate-standalone.ts"
   },
   "dependencies": {
     "@chainlink/cre-sdk": "^1.0.9",

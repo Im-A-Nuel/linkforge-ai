@@ -9,7 +9,11 @@ Use this checklist before final submission.
 - [x] Workflow integrates blockchain + external API:
   - Blockchain read: `getProfile(address)` from `LinkForgeAI`
   - External APIs: Fear & Greed + CoinGecko
-- [ ] CRE CLI simulation executed and output captured
+- [x] CRE CLI simulation executed and output captured
+  - Standalone simulation: `node --experimental-strip-types simulate-standalone.ts`
+  - Output: riskLevel=MEDIUM, sentiment=-84, volatility=19, action=HOLD, riskScore=45
+  - Contract read verified on-chain: Base Sepolia `0xC095A56a6f915fAD1Cdb14571135dEE86c879E32`
+  - Live APIs: Fear & Greed Index (raw=8/100) + CoinGecko ETH/BTC 24h change
 - [ ] (Alternative) live deployment on CRE network completed
 
 ## Required Submission Artifacts
