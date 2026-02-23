@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
 import { ConnectWallet } from '@/components/connect-wallet';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { useLanguage } from '@/hooks/useLanguage';
+import { useLanguage, type Language } from '@/hooks/useLanguage';
 import { config } from '@/lib/config';
 
 const topLinks = [
@@ -245,6 +245,16 @@ const translations = {
   },
 } as const;
 
+type TranslationDictionary = typeof translations.en;
+type DeepWidenStrings<T> =
+  T extends string ? string :
+  T extends readonly (infer U)[] ? readonly DeepWidenStrings<U>[] :
+  T extends object ? { [K in keyof T]: DeepWidenStrings<T[K]> } :
+  T;
+
+type TranslationShape = DeepWidenStrings<TranslationDictionary>;
+const translationsByLanguage: Record<Language, TranslationShape> = translations;
+
 const DEMO_ASSET = 'ETH';
 const DEMO_FALLBACK_ADDRESS = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
@@ -293,19 +303,19 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function getSentimentDirection(sentiment: number | undefined, t: (typeof translations)[Language]) {
+function getSentimentDirection(sentiment: number | undefined, t: TranslationShape) {
   if ((sentiment ?? 0) > 0.2) return t.demo.panel.bullish;
   if ((sentiment ?? 0) < -0.2) return t.demo.panel.bearish;
   return t.demo.panel.neutral;
 }
 
-function getRiskTone(riskLevel: RiskData['riskLevel'] | undefined, t: (typeof translations)[Language]) {
+function getRiskTone(riskLevel: RiskData['riskLevel'] | undefined, t: TranslationShape) {
   if (riskLevel === 'low') return t.demo.panel.riskLow;
   if (riskLevel === 'high') return t.demo.panel.riskHigh;
   return t.demo.panel.riskMedium;
 }
 
-function getRecommendation(sentiment: number | undefined, riskLevel: RiskData['riskLevel'] | undefined, esgScore: number | undefined, t: (typeof translations)[Language]) {
+function getRecommendation(sentiment: number | undefined, riskLevel: RiskData['riskLevel'] | undefined, esgScore: number | undefined, t: TranslationShape) {
   if (riskLevel === 'high') return t.demo.panel.recReduce;
   if ((sentiment ?? 0) > 0.4 && (esgScore ?? 0) >= 60) return t.demo.panel.recIncrease;
   if ((sentiment ?? 0) < -0.2) return t.demo.panel.recPause;
@@ -333,7 +343,7 @@ export default function LandingPage() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const t = translations[language];
+  const t = translationsByLanguage[language];
   const connectLabel =
     language === 'zh'
       ? '连接'
@@ -373,8 +383,6 @@ export default function LandingPage() {
 
   const sentimentDirection = getSentimentDirection(sentimentQuery.data?.sentiment, t);
   const recommendation = getRecommendation(sentimentQuery.data?.sentiment, riskQuery.data?.riskLevel, esgQuery.data?.score, t);
-  const riskPercent = riskQuery.data?.riskLevel === 'high' ? 90 : riskQuery.data?.riskLevel === 'low' ? 25 : 55;
-
   return (
     <div
       className="text-[#121212]"

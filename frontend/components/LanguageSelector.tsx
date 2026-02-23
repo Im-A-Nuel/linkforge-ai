@@ -10,6 +10,13 @@ const LANGUAGES: { value: Language; label: string; native: string }[] = [
   { value: 'id', label: 'Bahasa Indonesia',  native: 'ID' },
 ];
 
+const UI_TEXT: Record<Language, { language: string; ariaLabel: string }> = {
+  en: { language: 'Language', ariaLabel: 'Select language' },
+  zh: { language: '语言', ariaLabel: '选择语言' },
+  de: { language: 'Sprache', ariaLabel: 'Sprache waehlen' },
+  id: { language: 'Bahasa', ariaLabel: 'Pilih bahasa' },
+};
+
 /* ── SVG Flag Icons ─────────────────────────────────────────────────────── */
 function FlagUK() {
   return (
@@ -76,6 +83,7 @@ export function LanguageSelector({ compact = false }: Props) {
   const { language, setLanguage } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const uiText = UI_TEXT[language];
 
   // Close on outside click
   useEffect(() => {
@@ -97,7 +105,7 @@ export function LanguageSelector({ compact = false }: Props) {
         className={`group flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white shadow-sm transition-all hover:border-[#2b68ff]/40 hover:shadow-md ${
           compact ? 'h-9 px-2.5' : 'h-9 px-3'
         }`}
-        aria-label="Select language"
+        aria-label={uiText.ariaLabel}
       >
         {/* Flag */}
         <span className="h-[18px] w-[26px] overflow-hidden rounded-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
@@ -126,7 +134,7 @@ export function LanguageSelector({ compact = false }: Props) {
           {/* Header */}
           <div className="border-b border-[#f1f5f9] px-4 py-2.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8]">
-              Language
+              {uiText.language}
             </p>
           </div>
 

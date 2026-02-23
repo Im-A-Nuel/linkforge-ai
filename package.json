@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "@chainlink/functions-toolkit": "^0.3.2",
+    "ethers": "^6.16.0"
+  }
+}

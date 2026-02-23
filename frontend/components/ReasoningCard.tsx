@@ -156,6 +156,18 @@ export default function ReasoningCard({
   const [animateMetrics, setAnimateMetrics] = useState(false);
 
   const action = ACTIONS[recommendedAction] || ACTIONS[0];
+  const rawMetadata = (ipfsHash ?? '').trim();
+  const isIpfsCid =
+    /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(rawMetadata) ||
+    /^bafy[a-z0-9]{20,}$/i.test(rawMetadata);
+  const aiReason = rawMetadata.startsWith('reason:')
+    ? rawMetadata.slice('reason:'.length).trim()
+    : rawMetadata.startsWith('r:')
+    ? rawMetadata.slice(2).trim()
+    : !isIpfsCid
+    ? rawMetadata
+    : '';
+  const ipfsCid = isIpfsCid ? rawMetadata : '';
 
   useEffect(() => {
     setAnimateMetrics(false);
@@ -275,6 +287,12 @@ export default function ReasoningCard({
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${action.badgeClass}`}>{action.badge}</span>
           </div>
+          {aiReason && (
+            <div className="mt-4 rounded-2xl border border-[#d8e2f4] bg-white/90 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5f6f8c]">AI Reason</p>
+              <p className="mt-1 text-sm text-[#314667]">{aiReason}</p>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -359,9 +377,9 @@ export default function ReasoningCard({
               </div>
             </div>
 
-            {ipfsHash && (
+            {ipfsCid && (
               <a
-                href={`https://ipfs.io/ipfs/${ipfsHash}`}
+                href={`https://ipfs.io/ipfs/${ipfsCid}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-4 inline-flex items-center rounded-full border border-[#cfdbf7] bg-white px-4 py-2 text-sm font-semibold text-[#2b68ff] transition hover:bg-[#eff4ff]"
