@@ -57,25 +57,49 @@ forge test
 
 ## CRE Workflow (CRE & AI)
 
-LinkForge includes a CRE orchestration workflow that combines:
-- On-chain read from `LinkForgeAI.getProfile(address)` (Base Sepolia)
-- Off-chain external data from Fear & Greed API and CoinGecko
-- AI-style recommendation logic (`HOLD`, `SHIFT_TO_STABLE`, `INCREASE_EXPOSURE`, `DIVERSIFY`)
+LinkForge integrates a full AI decision pipeline into a Chainlink Runtime Environment (CRE) orchestration workflow:
 
-Workflow entrypoint:
+1. **On-chain read** — `LinkForgeAI.getProfile(address)` on Base Sepolia via `cre.capabilities.EVMClient`
+2. **External data** — Fear & Greed Index + CoinGecko 24h price data via `cre.capabilities.HTTPClient` with `consensusMedianAggregation`
+3. **Quantitative scoring** — sentiment score, volatility score, composite risk score
+4. **GPT-4o-mini decision** — OpenAI API call with full market context + user risk profile → returns `HOLD / SHIFT_TO_STABLE / INCREASE_EXPOSURE / DIVERSIFY`
+5. **Rule-based fallback** — activates automatically if LLM is unavailable
+6. **On-chain commit** — result encoded and stored via Chainlink Functions `fulfillRequest` callback
+
+### Chainlink Functions: Setting the EigenAI Secret
+
+The Chainlink Functions source (`chainlink-functions/ai-analysis.js`) reads `secrets.eigenaiKey`
+and calls Deepseek V3.1 via the EigenAI API (OpenAI-compatible endpoint).
+To enable AI decisions in the live DON, set a DON-hosted secret:
+
+```bash
+# 1. Encrypt and upload secret to Chainlink DON
+npx @chainlink/functions-toolkit secrets set eigenaiKey "sk-e6YOUR_KEY" \
+  --network base-sepolia \
+  --slotId 0 \
+  --ttl 240
+
+# 2. Note the returned encryptedSecretsUrls reference
+# 3. Pass it in the requestAIAnalysis call (see contract docs)
+```
+
+### Workflow entrypoint
 - `CRE/workflows/linkforge-ai-orchestrator.ts`
-
-Simulation config:
 - `CRE/workflows/config.json`
 
-Local simulation command (via CRE CLI):
+### Local simulation (via CRE CLI)
 ```bash
 cd CRE
 cre workflow simulate --target local-simulation --config workflows/config.json workflows/linkforge-ai-orchestrator.ts
 ```
 
-Detailed CRE instructions:
-- `CRE/README.md`
+### Standalone simulation with real AI output (for demo video)
+```bash
+cd CRE
+OPENAI_API_KEY=sk-your-key node --experimental-strip-types simulate-standalone.ts
+```
+
+Detailed CRE instructions: `CRE/README.md`
 
 ## Demo Video (Required for Submission)
 
