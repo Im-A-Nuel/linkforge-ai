@@ -10,11 +10,26 @@ import AIAnalysisSection from '@/components/AIAnalysisSection';
 import { HydrationLoader, WalletRequiredState } from '@/components/ui/wallet-states';
 import { useQuery } from '@tanstack/react-query';
 import { config } from '@/lib/config';
+import { RiskLevel } from '@/lib/contract';
+import { useLanguage } from '@/hooks/useLanguage';
+import { useT } from '@/lib/i18n';
+
+// Deterministic pseudo-random seeded from wallet address for consistent demo values
+function addressSeed(addr: string | undefined): number {
+  if (!addr) return 42_000;
+  return addr.split('').reduce((acc, ch) => ((acc * 31 + ch.charCodeAt(0)) & 0x7fffffff), 0);
+}
+function seededFloat(seed: number, index: number): number {
+  const s = (seed * 1664525 + 1013904223 * (index + 1)) & 0x7fffffff;
+  return s / 0x7fffffff;
+}
 
 const PROJECT_LOGO = '/icon/LinkForge%20AI%20logo.png';
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount();
+  const { language } = useLanguage();
+  const t = useT(language);
   const [mounted, setMounted] = useState(false);
   const [nowTimestamp, setNowTimestamp] = useState(0);
 
@@ -90,20 +105,19 @@ export default function Dashboard() {
   };
 
   const toActivityContent = (log: EventLog) => {
-    const actionTextByCode: Record<string, string> = {
-      HOLD: 'Kept current allocation',
-      SHIFT_TO_STABLE: 'Rebalanced to increase stable assets',
-      INCREASE_EXPOSURE: 'Increased growth allocation gradually',
-      DIVERSIFY: 'Diversified allocation across assets',
-    };
-
     if (log.type === 'RebalanceExecuted') {
+      const actionTextByCode: Record<string, string> = {
+        HOLD: t.dashboard.holdAlloc,
+        SHIFT_TO_STABLE: t.dashboard.shiftToStable,
+        INCREASE_EXPOSURE: t.dashboard.increaseExposure,
+        DIVERSIFY: t.dashboard.diversify,
+      };
       const actionMatch = log.details.match(/Action:\s*([A-Z_]+)/);
       const actionCode = actionMatch?.[1] ?? '';
 
       return {
-        title: 'AI Recommendation Executed',
-        description: actionTextByCode[actionCode] ?? 'Portfolio rebalance executed on-chain',
+        title: t.dashboard.aiRecommendation,
+        description: actionTextByCode[actionCode] ?? t.dashboard.rebalanceDefault,
       };
     }
 
@@ -112,22 +126,22 @@ export default function Dashboard() {
       const risk = riskMatch?.[1] ?? 'Unknown';
 
       return {
-        title: 'Risk Assessment Complete',
-        description: `Portfolio risk level: ${risk}`,
+        title: t.dashboard.riskAssessment,
+        description: `${t.dashboard.riskAssessmentDesc} ${risk}`,
       };
     }
 
     if (log.type === 'ReasoningCommitted') {
       return {
-        title: 'Data Synced from Oracle',
-        description: 'Latest market data and AI reasoning committed on-chain',
+        title: t.dashboard.dataSynced,
+        description: t.dashboard.dataSyncedDesc,
       };
     }
 
     if (log.type === 'RebalanceRequested') {
       return {
-        title: 'Rebalance Request Sent',
-        description: 'Automation request submitted and waiting execution',
+        title: t.dashboard.rebalanceRequest,
+        description: t.dashboard.rebalanceRequestDesc,
       };
     }
 
@@ -135,6 +149,27 @@ export default function Dashboard() {
       title: log.type,
       description: log.details,
     };
+  };
+
+  // Demo portfolio stats — deterministic per wallet address so they look real but vary per user
+  const _seed = addressSeed(address);
+  const portfolioValue = Math.floor(seededFloat(_seed, 0) * 420_000 + 80_000);
+  const portfolioChangePct = (seededFloat(_seed, 1) * 48 - 8).toFixed(1); // −8% … +40%
+  const portfolioPositive = parseFloat(portfolioChangePct) >= 0;
+
+  // Allocation percentages — driven by risk level + ESG preference
+  const ALLOC: Record<RiskLevel, { stable: number; growth: number; esg: number }> = {
+    [RiskLevel.LOW]:    { stable: 75, growth: 20, esg: 5  },
+    [RiskLevel.MEDIUM]: { stable: 60, growth: 30, esg: 10 },
+    [RiskLevel.HIGH]:   { stable: 40, growth: 45, esg: 15 },
+  };
+  const baseAlloc = ALLOC[profile?.riskLevel ?? RiskLevel.MEDIUM];
+  // Boost ESG slice +5 if esgPriority is enabled, trim growth accordingly
+  const esgBoost = profile?.esgPriority ? 5 : 0;
+  const alloc = {
+    stable: baseAlloc.stable,
+    growth: baseAlloc.growth - esgBoost,
+    esg:    baseAlloc.esg    + esgBoost,
   };
 
   // Prevent hydration mismatch
@@ -177,17 +212,17 @@ export default function Dashboard() {
         {/* Header */}
         <div>
           <h1 className="text-4xl font-black tracking-tight text-[#121212]">
-            Portfolio Dashboard
+            {t.dashboard.title}
           </h1>
           <p className="mt-2 text-lg text-[#565656]">
-            AI-powered insights powered by Chainlink oracles
+            {t.dashboard.subtitle}
           </p>
           <div className="mt-3 flex items-center gap-2">
             <div className="rounded-lg bg-white/60 px-3 py-1.5 text-xs font-mono text-gray-700 backdrop-blur">
               {address?.slice(0, 6)}...{address?.slice(-4)}
             </div>
             <div className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700">
-              Connected
+              {t.common.connected}
             </div>
             {isCached && (
               <div className="rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-semibold text-blue-700">
@@ -212,14 +247,16 @@ export default function Dashboard() {
               </svg>
             </div>
             <div className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">
-              Total Portfolio
+              {t.dashboard.totalPortfolio}
             </div>
-            <div className="text-4xl font-black text-[#121212]">$247,893</div>
+            <div className="text-4xl font-black text-[#121212]">
+              ${portfolioValue.toLocaleString()}
+            </div>
             <div className="mt-2 flex items-center gap-1.5 text-sm">
-              <span className="rounded-md bg-green-100 px-2 py-0.5 font-semibold text-green-700">
-                +24.5%
+              <span className={`rounded-md px-2 py-0.5 font-semibold ${portfolioPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {portfolioPositive ? '+' : ''}{portfolioChangePct}%
               </span>
-              <span className="text-gray-600">vs last month</span>
+              <span className="text-gray-600">{t.dashboard.vsLastMonth}</span>
             </div>
           </div>
 
@@ -231,13 +268,13 @@ export default function Dashboard() {
               </svg>
             </div>
             <div className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">
-              Risk Level
+              {t.dashboard.riskLevel}
             </div>
             <div className="text-3xl font-black text-amber-600">
-              {profile ? riskLevelToString(profile.riskLevel) : 'Medium'}
+              {profile ? riskLevelToString(profile.riskLevel) : t.profile.medium}
             </div>
             <p className="mt-2 text-sm text-gray-600">
-              {profile ? (profile.automationEnabled ? 'Automation enabled' : 'Manual control') : 'Balanced allocation strategy'}
+              {profile ? (profile.automationEnabled ? t.dashboard.automationEnabled : t.dashboard.manualControl) : t.dashboard.balancedAlloc}
             </p>
           </div>
 
@@ -249,13 +286,13 @@ export default function Dashboard() {
               </svg>
             </div>
             <div className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">
-              ESG Priority
+              {t.dashboard.esgPriority}
             </div>
             <div className="text-3xl font-black text-green-600">
-              {profile ? (profile.esgPriority ? 'Enabled' : 'Disabled') : 'Enabled'}
+              {profile ? (profile.esgPriority ? t.profile.enabled : t.profile.disabled) : t.profile.enabled}
             </div>
             <p className="mt-2 text-sm text-gray-600">
-              {profile ? (profile.esgPriority ? 'Sustainable investments active' : 'Standard allocation') : 'Loading...'}
+              {profile ? (profile.esgPriority ? t.dashboard.sustainableActive : t.dashboard.standardAlloc) : t.common.loading}
             </p>
           </div>
         </div>
@@ -263,9 +300,9 @@ export default function Dashboard() {
         {/* Portfolio Allocation */}
         <div className="rounded-3xl border border-white/50 bg-white p-8 shadow-lg">
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-black text-[#121212]">Portfolio Allocation</h2>
+            <h2 className="text-2xl font-black text-[#121212]">{t.dashboard.portfolioAllocation}</h2>
             <button className="rounded-full bg-[#eff3ff] px-4 py-2 text-sm font-semibold text-[#2b68ff] transition hover:bg-[#e0e7ff]">
-              Rebalance
+              {t.dashboard.rebalance}
             </button>
           </div>
 
@@ -274,12 +311,12 @@ export default function Dashboard() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-4 w-4 rounded-full bg-gradient-to-br from-blue-500 to-blue-600" />
-                  <span className="font-semibold text-[#121212]">Stable Assets</span>
+                  <span className="font-semibold text-[#121212]">{t.dashboard.stableAssets}</span>
                 </div>
-                <span className="text-lg font-bold text-[#121212]">60%</span>
+                <span className="text-lg font-bold text-[#121212]">{alloc.stable}%</span>
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-inner" style={{ width: '60%' }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-inner" style={{ width: `${alloc.stable}%` }} />
               </div>
               <p className="mt-1.5 text-xs text-gray-600">USDC, DAI, USDT</p>
             </div>
@@ -288,12 +325,12 @@ export default function Dashboard() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-4 w-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-600" />
-                  <span className="font-semibold text-[#121212]">Growth Assets</span>
+                  <span className="font-semibold text-[#121212]">{t.dashboard.growthAssets}</span>
                 </div>
-                <span className="text-lg font-bold text-[#121212]">30%</span>
+                <span className="text-lg font-bold text-[#121212]">{alloc.growth}%</span>
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600 shadow-inner" style={{ width: '30%' }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600 shadow-inner" style={{ width: `${alloc.growth}%` }} />
               </div>
               <p className="mt-1.5 text-xs text-gray-600">ETH, BTC, LINK</p>
             </div>
@@ -302,12 +339,12 @@ export default function Dashboard() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-4 w-4 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600" />
-                  <span className="font-semibold text-[#121212]">ESG Green Assets</span>
+                  <span className="font-semibold text-[#121212]">{t.dashboard.esgGreenAssets}</span>
                 </div>
-                <span className="text-lg font-bold text-[#121212]">10%</span>
+                <span className="text-lg font-bold text-[#121212]">{alloc.esg}%</span>
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-inner" style={{ width: '10%' }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-inner" style={{ width: `${alloc.esg}%` }} />
               </div>
               <p className="mt-1.5 text-xs text-gray-600">Carbon Credits, Green Bonds</p>
             </div>
@@ -322,13 +359,13 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div className="rounded-3xl border border-white/50 bg-white p-8 shadow-lg">
-          <h2 className="mb-6 text-2xl font-black text-[#121212]">Recent Activity</h2>
+          <h2 className="mb-6 text-2xl font-black text-[#121212]">{t.dashboard.recentActivity}</h2>
 
           <div className="space-y-4">
             {isEventLogsLoading ? (
               <div className="rounded-2xl border border-gray-100 bg-gray-50 p-6 text-center">
                 <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent" />
-                <p className="mt-2 text-sm text-gray-600">Loading recent on-chain activity...</p>
+                <p className="mt-2 text-sm text-gray-600">{t.dashboard.loadingActivity}</p>
               </div>
             ) : eventLogsError ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
@@ -336,8 +373,8 @@ export default function Dashboard() {
               </div>
             ) : recentActivityLogs.length === 0 ? (
               <div className="rounded-2xl border border-gray-100 bg-gray-50 p-6 text-center">
-                <p className="text-sm font-semibold text-gray-700">No recent activity yet</p>
-                <p className="mt-1 text-xs text-gray-500">Your on-chain events will appear here after transactions.</p>
+                <p className="text-sm font-semibold text-gray-700">{t.dashboard.noActivity}</p>
+                <p className="mt-1 text-xs text-gray-500">{t.dashboard.noActivityDesc}</p>
               </div>
             ) : (
               recentActivityLogs.map((log) => {
@@ -445,6 +482,7 @@ function CRELiveSignal() {
     },
     refetchInterval: 5 * 60 * 1000,
     staleTime: 4 * 60 * 1000,
+    retry: false,
   });
 
   const actionColor = data ? ACTION_COLOR[data.action] : 'text-emerald-600';

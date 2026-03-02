@@ -5,14 +5,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectWallet } from './connect-wallet';
 import { LanguageSelector } from './LanguageSelector';
+import { useLanguage } from '@/hooks/useLanguage';
+import { useT } from '@/lib/i18n';
 
 export function Navbar() {
   const pathname = usePathname();
+  const { language } = useLanguage();
+  const t = useT(language);
 
   const links = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/profile', label: 'Profile' },
-    { href: '/logs', label: 'Logs' },
+    { href: '/dashboard', label: t.nav.dashboard },
+    { href: '/profile', label: t.nav.profile },
+    { href: '/logs', label: t.nav.logs },
   ];
 
   return (

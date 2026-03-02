@@ -7,12 +7,16 @@ import { useSetProfile, stringToRiskLevel, riskLevelToString } from '@/hooks/use
 import { useCachedProfile } from '@/hooks/useCachedProfile';
 import { HydrationLoader, WalletRequiredState } from '@/components/ui/wallet-states';
 import { useToast } from '@/components/ui/toast';
+import { useLanguage } from '@/hooks/useLanguage';
+import { useT } from '@/lib/i18n';
 
 const PROJECT_LOGO = '/icon/LinkForge%20AI%20logo.png';
 
 export default function Profile() {
   const { address, isConnected } = useAccount();
   const { pushToast } = useToast();
+  const { language } = useLanguage();
+  const t = useT(language);
   const [mounted, setMounted] = useState(false);
   const [riskLevel, setRiskLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [esgPriority, setEsgPriority] = useState(true);
@@ -43,8 +47,8 @@ export default function Profile() {
     if (isSuccess) {
       pushToast({
         type: 'success',
-        title: 'Profile updated',
-        message: 'Your portfolio preferences are saved on-chain.',
+        title: t.profile.toastSuccessTitle,
+        message: t.profile.toastSuccessMsg,
       });
 
       // Wait 3 seconds for blockchain to update, then force refresh
@@ -60,18 +64,18 @@ export default function Profile() {
 
     pushToast({
       type: 'error',
-      title: 'Failed to save profile',
+      title: t.profile.toastErrorTitle,
       message: error.message,
       duration: 5600,
     });
-  }, [error, pushToast]);
+  }, [error, pushToast, t.profile.toastErrorTitle]);
 
   // Prevent hydration mismatch - don't render until mounted
   if (!mounted) {
     return (
       <HydrationLoader
-        title="Loading profile settings"
-        subtitle="Checking wallet and reading latest preference state..."
+        title={t.profile.loadingTitle}
+        subtitle={t.profile.loadingSubtitle}
       />
     );
   }
@@ -79,9 +83,9 @@ export default function Profile() {
   if (!isConnected) {
     return (
       <WalletRequiredState
-        title="Profile Access Locked"
-        description="Connect wallet to manage risk level, ESG priority, and automation preferences."
-        hint="These settings are tied to your wallet address."
+        title={t.profile.lockedTitle}
+        description={t.profile.lockedDesc}
+        hint={t.profile.lockedHint}
       />
     );
   }
@@ -92,14 +96,14 @@ export default function Profile() {
       setProfile(riskLevelEnum, esgPriority, automationEnabled);
       pushToast({
         type: 'info',
-        title: 'Transaction requested',
-        message: 'Approve the wallet prompt to save profile settings.',
+        title: t.profile.toastTxTitle,
+        message: t.profile.toastTxMsg,
       });
     } catch (err) {
       console.error('Error saving profile:', err);
       pushToast({
         type: 'error',
-        title: 'Could not start transaction',
+        title: t.profile.toastStartErrorTitle,
         message: err instanceof Error ? err.message : 'Unexpected error',
       });
     }
@@ -110,17 +114,17 @@ export default function Profile() {
         {/* Header */}
         <div>
           <h1 className="text-4xl font-black tracking-tight text-[#121212]">
-            Profile Settings
+            {t.profile.title}
           </h1>
           <p className="mt-2 text-lg text-[#565656]">
-            Configure your investment preferences and automation settings
+            {t.profile.subtitle}
           </p>
           <div className="mt-3 flex items-center gap-2">
             <div className="rounded-lg bg-white/60 px-3 py-1.5 text-xs font-mono text-gray-700 backdrop-blur">
               {address?.slice(0, 6)}...{address?.slice(-4)}
             </div>
             <div className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700">
-              Connected
+              {t.common.connected}
             </div>
           </div>
         </div>
@@ -133,7 +137,7 @@ export default function Profile() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
               </svg>
             </div>
-            <h2 className="text-xl font-black text-[#121212]">Wallet Address</h2>
+            <h2 className="text-xl font-black text-[#121212]">{t.profile.walletAddress}</h2>
           </div>
           <div className="rounded-2xl bg-gray-50 px-4 py-3 font-mono text-sm text-gray-700 break-all">
             {address}
@@ -149,8 +153,8 @@ export default function Profile() {
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#121212]">Risk Tolerance</h2>
-              <p className="text-sm text-gray-600">Select your preferred investment risk level</p>
+              <h2 className="text-xl font-black text-[#121212]">{t.profile.riskTolerance}</h2>
+              <p className="text-sm text-gray-600">{t.profile.riskSubtitle}</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
@@ -167,12 +171,12 @@ export default function Profile() {
                 <div className={`text-lg font-bold capitalize mb-1 ${
                   riskLevel === level ? 'text-amber-700' : 'text-[#121212]'
                 }`}>
-                  {level}
+                  {level === 'low' ? t.profile.low : level === 'medium' ? t.profile.medium : t.profile.high}
                 </div>
                 <div className="text-xs text-gray-600">
-                  {level === 'low' && 'Conservative'}
-                  {level === 'medium' && 'Balanced'}
-                  {level === 'high' && 'Aggressive'}
+                  {level === 'low' && t.profile.conservative}
+                  {level === 'medium' && t.profile.balanced}
+                  {level === 'high' && t.profile.aggressive}
                 </div>
                 {riskLevel === level && (
                   <div className="absolute right-2 top-2 h-5 w-5 rounded-full bg-amber-500 flex items-center justify-center">
@@ -195,8 +199,8 @@ export default function Profile() {
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#121212]">ESG Priority</h2>
-              <p className="text-sm text-gray-600">Enable sustainable and environmentally-friendly investments</p>
+              <h2 className="text-xl font-black text-[#121212]">{t.profile.esgPriority}</h2>
+              <p className="text-sm text-gray-600">{t.profile.esgSubtitle}</p>
             </div>
           </div>
           <button
@@ -209,7 +213,7 @@ export default function Profile() {
           >
             <div className="flex items-center justify-between">
               <span className={`text-lg font-bold ${esgPriority ? 'text-green-700' : 'text-gray-700'}`}>
-                {esgPriority ? 'Enabled' : 'Disabled'}
+                {esgPriority ? t.profile.enabled : t.profile.disabled}
               </span>
               <div
                 className={`relative w-16 h-8 rounded-full transition-colors ${
@@ -239,8 +243,8 @@ export default function Profile() {
               />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#121212]">Chainlink Automation</h2>
-              <p className="text-sm text-gray-600">Enable automated rebalancing based on AI recommendations</p>
+              <h2 className="text-xl font-black text-[#121212]">{t.profile.chainlinkAutomation}</h2>
+              <p className="text-sm text-gray-600">{t.profile.automationSubtitle}</p>
             </div>
           </div>
           <button
@@ -253,7 +257,7 @@ export default function Profile() {
           >
             <div className="flex items-center justify-between">
               <span className={`text-lg font-bold ${automationEnabled ? 'text-blue-700' : 'text-gray-700'}`}>
-                {automationEnabled ? 'Enabled' : 'Disabled'}
+                {automationEnabled ? t.profile.enabled : t.profile.disabled}
               </span>
               <div
                 className={`relative w-16 h-8 rounded-full transition-colors ${
@@ -277,23 +281,23 @@ export default function Profile() {
             disabled={isPending || isConfirming}
             className="w-full rounded-full bg-gradient-to-r from-[#2b68ff] to-[#1f57de] px-8 py-4 text-lg font-bold text-white shadow-xl transition hover:shadow-2xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            {isPending && 'Waiting for approval...'}
-            {isConfirming && 'Confirming transaction...'}
-            {!isPending && !isConfirming && 'Save Profile Settings'}
+            {isPending && t.profile.waitingApproval}
+            {isConfirming && t.profile.confirmingTx}
+            {!isPending && !isConfirming && t.profile.saveProfile}
           </button>
 
           {/* Transaction Status */}
           {hash && (
             <div className="rounded-2xl bg-blue-50 p-4">
               <p className="text-sm text-blue-700">
-                <span className="font-semibold">Transaction submitted:</span>{' '}
+                <span className="font-semibold">{t.profile.txSubmitted}</span>{' '}
                 <a
                   href={`https://sepolia.basescan.org/tx/${hash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline hover:text-blue-900"
                 >
-                  View on BaseScan
+                  {t.profile.viewOnBaseScan}
                 </a>
               </p>
             </div>
@@ -302,7 +306,7 @@ export default function Profile() {
           {isSuccess && (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-green-700">
-                Profile saved successfully to blockchain.
+                {t.profile.profileSaved}
               </p>
             </div>
           )}
@@ -310,7 +314,7 @@ export default function Profile() {
           {error && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
               <p className="text-sm font-semibold text-red-700">
-                Error: {error.message}
+                {t.profile.errorPrefix} {error.message}
               </p>
             </div>
           )}

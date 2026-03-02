@@ -6,24 +6,27 @@ import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { wagmiConfig, chains } from '@/lib/wagmi';
 import { useState } from 'react';
 import { ToastProvider } from '@/components/ui/toast';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          initialChain={chains[0]}
-          theme={lightTheme({
-            accentColor: '#2b68ff',
-            accentColorForeground: '#ffffff',
-            borderRadius: 'large',
-          })}
-        >
-          <ToastProvider>{children}</ToastProvider>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <LanguageProvider>
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider
+            initialChain={chains[0]}
+            theme={lightTheme({
+              accentColor: '#2b68ff',
+              accentColorForeground: '#ffffff',
+              borderRadius: 'large',
+            })}
+          >
+            <ToastProvider>{children}</ToastProvider>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </LanguageProvider>
   );
 }

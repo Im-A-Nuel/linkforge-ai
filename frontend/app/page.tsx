@@ -324,9 +324,11 @@ function getRecommendation(sentiment: number | undefined, riskLevel: RiskData['r
 
 export default function LandingPage() {
   const { language } = useLanguage();
+  const [mounted, setMounted] = useState(false);
   const [displayScore, setDisplayScore] = useState(0);
 
   useEffect(() => {
+    setMounted(true);
     const target = 87.4;
     const duration = 2000;
     let startTime: number | null = null;
@@ -360,18 +362,21 @@ export default function LandingPage() {
     queryKey: ['landing-demo-sentiment', DEMO_ASSET],
     queryFn: () => fetchJson<SentimentData>(`${config.backendUrl}/api/sentiment?asset=${DEMO_ASSET}`),
     refetchInterval: 30000,
+    retry: false,
   });
 
   const riskQuery = useQuery({
     queryKey: ['landing-demo-risk', walletAddress],
     queryFn: () => fetchJson<RiskData>(`${config.backendUrl}/api/wallet-risk?address=${walletAddress}`),
     refetchInterval: 30000,
+    retry: false,
   });
 
   const esgQuery = useQuery({
     queryKey: ['landing-demo-esg', DEMO_ASSET],
     queryFn: () => fetchJson<ESGData>(`${config.backendUrl}/api/esg-score?asset=${DEMO_ASSET}`),
     refetchInterval: 30000,
+    retry: false,
   });
 
   const isDemoLoading = sentimentQuery.isLoading || riskQuery.isLoading || esgQuery.isLoading;
@@ -627,7 +632,7 @@ export default function LandingPage() {
 
             {/* CTA Button */}
             <div className="mt-8 flex justify-center">
-              {address ? (
+              {mounted && address ? (
                 <Link
                   href="/dashboard"
                   className="group flex items-center gap-3 rounded-full bg-gradient-to-r from-[#2b68ff] to-[#1f57de] px-10 py-4 text-lg font-bold text-white shadow-xl transition hover:scale-[1.05] hover:shadow-2xl"
@@ -968,199 +973,6 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      <style jsx global>{`
-        @keyframes rise-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes float-soft {
-          0%,
-          100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-9px);
-          }
-        }
-
-        @keyframes float-chat {
-          0%,
-          100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-6px);
-          }
-        }
-
-        .animate-rise-up {
-          animation: rise-up 0.8s ease-out both;
-        }
-
-        .animate-float-soft {
-          animation: float-soft 6s ease-in-out infinite;
-        }
-
-        .animate-float-chat {
-          animation: float-chat 5s ease-in-out infinite;
-        }
-
-        @keyframes pixel-shift {
-          0%, 100% {
-            background-color: #0a0a0a;
-          }
-          20% {
-            background-color: #1a1a1a;
-          }
-          40% {
-            background-color: #2a2a2a;
-          }
-          60% {
-            background-color: #3a3a3a;
-          }
-          80% {
-            background-color: #2a2a2a;
-          }
-        }
-
-        .animate-pixel-shift {
-          animation: pixel-shift infinite ease-in-out;
-          will-change: background-color;
-        }
-
-        @keyframes heroCardReveal {
-          from {
-            opacity: 0;
-            transform: translateY(30px) scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes heroStarTwinkle {
-          0%, 100% { opacity: 0.1; }
-          50% { opacity: 0.7; }
-        }
-
-        @keyframes heroBarGrow {
-          from { transform: scaleY(0); }
-          to { transform: scaleY(1); }
-        }
-
-        @keyframes heroLineDraw {
-          from { stroke-dashoffset: 600; }
-          to { stroke-dashoffset: 0; }
-        }
-
-        @keyframes heroAreaFade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes heroTooltipReveal {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes heroGlowPulse {
-          0%, 100% {
-            opacity: 0.15;
-            transform: translateX(-50%) scaleX(1);
-          }
-          50% {
-            opacity: 0.3;
-            transform: translateX(-50%) scaleX(1.05);
-          }
-        }
-
-        .hero-card-entrance {
-          animation: heroCardReveal 1s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-
-        .hero-star {
-          animation: heroStarTwinkle ease-in-out infinite;
-        }
-
-        .hero-bar {
-          transform-box: fill-box;
-          transform-origin: center bottom;
-          animation: heroBarGrow 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-
-        .hero-line {
-          stroke-dasharray: 600;
-          stroke-dashoffset: 600;
-          animation: heroLineDraw 2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
-        }
-
-        .hero-area {
-          animation: heroAreaFade 1s ease-out 1.8s both;
-        }
-
-        .hero-tooltip {
-          animation: heroTooltipReveal 0.5s ease-out 2.2s both;
-        }
-
-        .hero-glow {
-          animation: heroGlowPulse 4s ease-in-out infinite;
-        }
-
-        /* Wave ribbon animations */
-        @keyframes waveRibbonFlow {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-
-        .wave-ribbon-1 {
-          animation: waveRibbonFlow 14s linear infinite;
-          will-change: transform;
-        }
-
-        .wave-ribbon-2 {
-          animation: waveRibbonFlow 10s linear infinite reverse;
-          will-change: transform;
-        }
-
-        .wave-ribbon-3 {
-          animation: waveRibbonFlow 7s linear infinite;
-          will-change: transform;
-        }
-
-        @keyframes waveBokehFloat {
-          0%, 100% { transform: translateY(0) scale(1); opacity: 0.6; }
-          50% { transform: translateY(-10px) scale(1.08); opacity: 1; }
-        }
-
-        .wave-bokeh {
-          animation: waveBokehFloat ease-in-out infinite;
-        }
-
-        /* Demo panel progress bars */
-        @keyframes demoProgressGrow {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
-        }
-
-        .demo-progress-bar {
-          transform-origin: left;
-          animation: demoProgressGrow 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
-        }
-      `}</style>
     </div>
   );
 }
