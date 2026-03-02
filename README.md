@@ -62,7 +62,7 @@ LinkForge integrates a full AI decision pipeline into a Chainlink Runtime Enviro
 1. **On-chain read** — `LinkForgeAI.getProfile(address)` on Base Sepolia via `cre.capabilities.EVMClient`
 2. **External data** — Fear & Greed Index + CoinGecko 24h price data via `cre.capabilities.HTTPClient` with `consensusMedianAggregation`
 3. **Quantitative scoring** — sentiment score, volatility score, composite risk score
-4. **GPT-4o-mini decision** — OpenAI API call with full market context + user risk profile → returns `HOLD / SHIFT_TO_STABLE / INCREASE_EXPOSURE / DIVERSIFY`
+4. **Deepseek V3.1 decision** — EigenAI API call (OpenAI-compatible) with full market context + user risk profile → returns `HOLD / SHIFT_TO_STABLE / INCREASE_EXPOSURE / DIVERSIFY`
 5. **Rule-based fallback** — activates automatically if LLM is unavailable
 6. **On-chain commit** — result encoded and stored via Chainlink Functions `fulfillRequest` callback
 
@@ -96,7 +96,7 @@ cre workflow simulate --target local-simulation --config workflows/config.json w
 ### Standalone simulation with real AI output (for demo video)
 ```bash
 cd CRE
-OPENAI_API_KEY=sk-your-key node --experimental-strip-types simulate-standalone.ts
+EIGENAI_API_KEY=sk-your-eigenai-key node --experimental-strip-types simulate-standalone.ts
 ```
 
 Detailed CRE instructions: `CRE/README.md`
@@ -122,15 +122,16 @@ cd CRE
 node --experimental-strip-types simulate-standalone.ts
 ```
 
-Result snapshot:
+Result snapshot (live run, 2026-02-23):
 - `riskLevel=MEDIUM`
 - `esgPriority=true`
-- `automationEnabled=false`
-- `fearGreedIndex=8`
-- `sentiment=-84`
-- `volatility=20`
-- `action=HOLD`
-- `riskScore=46`
+- `automationEnabled=true`
+- `fearGreedIndex=5` (Extreme Fear)
+- `sentiment=-90`
+- `volatility=100`
+- `action=SHIFT_TO_STABLE`
+- `riskScore=96`
+- `decisionSource=llm` (EigenAI · Deepseek V3.1)
 
 ## Chainlink File Index (Required)
 
