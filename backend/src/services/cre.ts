@@ -34,11 +34,17 @@ const ACTION_REASONS: Record<RebalanceAction, string> = {
   DIVERSIFY: 'Volatility is high. Diversify allocation to reduce concentration risk.',
 };
 
-async function fetchWithTimeout(url: string, ms = 8000): Promise<Response> {
+interface FetchLikeResponse {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}
+
+async function fetchWithTimeout(url: string, ms = 8000): Promise<FetchLikeResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
-    return await fetch(url, { signal: controller.signal });
+    return (await fetch(url, { signal: controller.signal })) as FetchLikeResponse;
   } finally {
     clearTimeout(timer);
   }
