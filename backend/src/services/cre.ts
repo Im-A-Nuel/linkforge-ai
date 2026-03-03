@@ -88,8 +88,10 @@ export async function getCRERecommendation(): Promise<CRERecommendation> {
   const avgAbsChange = (Math.abs(cg.eth) + Math.abs(cg.btc)) / 2;
   const volatilityScore = Math.min(Math.round(avgAbsChange * 20), 100);
 
-  // Default: MEDIUM risk profile (riskLevel=1) for dashboard display
-  const riskLevel = 1;
+  // Default: MEDIUM risk profile (1), overridable through env for demo tuning.
+  const parsedRiskLevel = Number(process.env.CRE_RISK_LEVEL ?? 1);
+  const riskLevel: 0 | 1 | 2 =
+    parsedRiskLevel === 0 || parsedRiskLevel === 2 ? parsedRiskLevel : 1;
   const negativeSentiment = sentimentScore < 0 ? Math.abs(sentimentScore) : 0;
   const riskScore = Math.min(100, Math.round(negativeSentiment * 0.4 + volatilityScore * 0.6));
 

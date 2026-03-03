@@ -163,7 +163,13 @@ export default function Dashboard() {
     [RiskLevel.MEDIUM]: { stable: 60, growth: 30, esg: 10 },
     [RiskLevel.HIGH]:   { stable: 40, growth: 45, esg: 15 },
   };
-  const baseAlloc = ALLOC[profile?.riskLevel ?? RiskLevel.MEDIUM];
+  const riskLevel =
+    profile?.riskLevel === RiskLevel.LOW ||
+    profile?.riskLevel === RiskLevel.MEDIUM ||
+    profile?.riskLevel === RiskLevel.HIGH
+      ? profile.riskLevel
+      : RiskLevel.MEDIUM;
+  const baseAlloc = ALLOC[riskLevel];
   // Boost ESG slice +5 if esgPriority is enabled, trim growth accordingly
   const esgBoost = profile?.esgPriority ? 5 : 0;
   const alloc = {
