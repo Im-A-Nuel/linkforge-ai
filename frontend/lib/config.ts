@@ -4,7 +4,7 @@ export const config = {
   chainId: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '84532'),
   vaultAddress: process.env.NEXT_PUBLIC_VAULT_ADDRESS as `0x${string}` || '0x',
   explorerBase: process.env.NEXT_PUBLIC_EXPLORER_BASE || 'https://sepolia.basescan.org',
-  backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080',
+  backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL || 'https://linkforge-backend.vercel.app',
 } as const;
 
 // Chain configuration

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 const PROJECT_ICON = "/icon/LinkForge%20AI%20logo.png";
-const DEFAULT_SITE_URL = "http://localhost:3000";
+const DEFAULT_SITE_URL = "https://linkforge-ai.vercel.app";
 
 function getMetadataBase() {
   const rawUrl =
