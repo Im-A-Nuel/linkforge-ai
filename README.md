@@ -101,17 +101,20 @@ EIGENAI_API_KEY=sk-your-eigenai-key node --experimental-strip-types simulate-sta
 
 Detailed CRE instructions: `CRE/README.md`
 
+## Live Demo
+
+- **Frontend**: https://linkforge-ai.vercel.app/
+- **Backend**: https://linkforge-backend.vercel.app/
+
 ## Demo Video (Required for Submission)
 
 - Public source repository: `https://github.com/Im-A-Nuel/linkforge-ai`
-- Public 3-5 minute video URL: `ADD_PUBLIC_VIDEO_URL_HERE`
-- Video should show:
+- Public 3-5 minute video URL: `https://youtu.be/B9A5G3vOrKA`
+- Video shows:
   - wallet/profile setup,
-  - AI analysis flow,
-  - on-chain events,
+  - AI analysis flow (Chainlink Functions → on-chain commit),
+  - on-chain events on BaseScan,
   - CRE workflow simulation command + output.
-- Full recording script:
-  - `docs/VIDEO-DEMO-SCRIPT.md`
 
 ## Simulation Evidence (Captured)
 
