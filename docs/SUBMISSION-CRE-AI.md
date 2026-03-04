@@ -10,11 +10,13 @@ Use this checklist before final submission.
   - Blockchain read: `getProfile(address)` from `LinkForgeAI`
   - External APIs: Fear & Greed + CoinGecko
 - [x] Workflow simulation executed and output captured
-  - Standalone simulation: `node --experimental-strip-types simulate-standalone.ts`
-  - Output: riskLevel=MEDIUM, sentiment=-84, volatility=20, action=HOLD, riskScore=46
-  - Profile snapshot: esgPriority=true, automationEnabled=false, lastRebalance=never
+  - Standalone simulation: `EIGENAI_API_KEY=sk-... node --experimental-strip-types simulate-standalone.ts`
+  - Output: riskLevel=MEDIUM, sentiment=-90, volatility=100, action=SHIFT_TO_STABLE, riskScore=96
+  - AI decision source: LLM — EigenAI · Deepseek V3.1 (not rule-based)
+  - LLM reasoning: "Extreme fear, negative sentiment, and maximum volatility scores indicate severe market stress, requiring a defensive shift to stablecoins for a medium-risk profile."
+  - Profile snapshot: esgPriority=true, automationEnabled=true, lastRebalance=2026-02-22
   - Contract read verified on-chain: Base Sepolia `0xC095A56a6f915fAD1Cdb14571135dEE86c879E32`
-  - Live APIs: Fear & Greed Index (raw=8/100) + CoinGecko ETH/BTC 24h change
+  - Live APIs: Fear & Greed Index (raw=5/100, Extreme Fear) + CoinGecko ETH -5.75% / BTC -4.63%
 - [ ] (Alternative) live deployment on CRE network completed
 
 ## Required Submission Artifacts
