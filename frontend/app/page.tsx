@@ -19,9 +19,9 @@ const topLinks = [
 ] as const;
 
 const footerLinks = [
-  { href: '#how-it-works', label: 'Docs' },
-  { href: '#about', label: 'About' },
-  { href: '#policy', label: 'Policy' },
+  { href: 'https://github.com/Im-A-Nuel/linkforge-ai', label: 'Docs', external: true },
+  { href: '#about', label: 'About', external: false },
+  { href: '#policy', label: 'Policy', external: false },
 ] as const;
 
 const translations = {
@@ -470,7 +470,7 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div id="about" className="mt-9 flex flex-wrap items-center gap-4">
+            <div className="mt-9 flex flex-wrap items-center gap-4">
               <div className="flex -space-x-2.5">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#ececec] bg-[#f5a05f] text-xs font-bold text-white">AR</span>
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#ececec] bg-[#1f6fff] text-xs font-bold text-white">LN</span>
@@ -950,26 +950,105 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer id="policy" className="border-t border-[#d8e2ff] bg-gradient-to-b from-[#eef4ff] to-[#f7f9ff]">
-        <div className="mx-auto flex w-full max-w-[1220px] flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-black tracking-tight text-[#111827]">LinkForge AI</p>
-            <p className="mt-1 text-xs font-medium text-[#607090]">
-              On-chain portfolio automation with verifiable Chainlink data.
-            </p>
-          </div>
+      {/* About Section */}
+      <section id="about" className="bg-white py-20">
+        <div className="mx-auto w-full max-w-[1220px] px-6">
+          <div className="grid gap-12 md:grid-cols-2 md:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#2b68ff]">About</p>
+              <h2 className="mt-3 text-4xl font-black tracking-tight text-[#0d1117]">Built for verifiable AI on Web3</h2>
+              <p className="mt-5 text-lg leading-relaxed text-[#4a5568]">
+                LinkForge AI is an open-source portfolio intelligence platform built on Chainlink CRE. Every AI decision —
+                risk scoring, sentiment analysis, rebalance recommendation — is executed by Chainlink Functions on a
+                decentralized oracle network and committed on-chain as a verifiable smart contract event.
+              </p>
+              <p className="mt-4 text-lg leading-relaxed text-[#4a5568]">
+                No black-box AI. No off-chain trust assumptions. Just transparent, auditable decisions anyone can verify
+                directly on Base Sepolia.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a
+                  href="https://github.com/Im-A-Nuel/linkforge-ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#d5e1ff] bg-[#f0f5ff] px-5 py-2.5 text-sm font-semibold text-[#2b68ff] transition hover:bg-[#e4edff]"
+                >
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.745 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                  </svg>
+                  View Source
+                </a>
+                <a
+                  href="https://sepolia.basescan.org/address/0xC095A56a6f915fAD1Cdb14571135dEE86c879E32"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#d5e1ff] bg-[#f0f5ff] px-5 py-2.5 text-sm font-semibold text-[#2b68ff] transition hover:bg-[#e4edff]"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Contract on BaseScan
+                </a>
+              </div>
+            </div>
 
-          <nav className="flex items-center gap-2">
-            {footerLinks.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="rounded-full border border-[#d5e1ff] bg-white px-4 py-1.5 text-xs font-semibold text-[#2454d6] transition hover:border-[#b9ccff] hover:bg-[#edf3ff]"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: 'Chainlink Functions', desc: 'DON-executed AI requests committed on-chain', icon: '⬡' },
+                { label: 'Chainlink CRE', desc: 'Orchestration layer for on-chain + off-chain data', icon: '◈' },
+                { label: 'EigenAI · Deepseek V3.1', desc: 'Real LLM decisions, not rule-based if-else', icon: '◎' },
+                { label: 'Base Sepolia', desc: 'Verified smart contract, open source', icon: '◇' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-[#e8eef8] bg-[#f8faff] p-5">
+                  <p className="text-2xl">{item.icon}</p>
+                  <p className="mt-2 text-sm font-black text-[#0d1117]">{item.label}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#607090]">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer id="policy" className="border-t border-[#d8e2ff] bg-gradient-to-b from-[#eef4ff] to-[#f7f9ff]">
+        <div className="mx-auto w-full max-w-[1220px] px-6 py-10">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-black tracking-tight text-[#111827]">LinkForge AI</p>
+              <p className="mt-1 text-xs font-medium text-[#607090]">
+                On-chain portfolio automation with verifiable Chainlink data.
+              </p>
+              <p className="mt-4 max-w-sm text-xs leading-relaxed text-[#8a96aa]">
+                <strong className="text-[#607090]">Disclaimer:</strong> LinkForge AI runs exclusively on Base Sepolia testnet.
+                No real funds are involved. This is a demo application built for the Chainlink Hackathon 2026.
+                No personal data is collected or stored. Wallet addresses are only used for on-chain contract interactions.
+              </p>
+            </div>
+
+            <nav className="flex items-center gap-2">
+              {footerLinks.map((item) => (
+                item.external ? (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-[#d5e1ff] bg-white px-4 py-1.5 text-xs font-semibold text-[#2454d6] transition hover:border-[#b9ccff] hover:bg-[#edf3ff]"
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="rounded-full border border-[#d5e1ff] bg-white px-4 py-1.5 text-xs font-semibold text-[#2454d6] transition hover:border-[#b9ccff] hover:bg-[#edf3ff]"
+                  >
+                    {item.label}
+                  </Link>
+                )
+              ))}
+            </nav>
+          </div>
         </div>
       </footer>
 
